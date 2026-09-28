@@ -13,9 +13,10 @@ import { detectDisclosureInData } from './disclosure';
 import { CHANNEL_ID_RE, VIDEO_ID_RE } from './extract';
 import type { ChannelRecord, Disclosure, Override } from './types';
 
-/** Max checks per day across all tabs. */
-export const CHECK_DAILY_CAP = 150;
-/** Min gap between two requests across all tabs. Kept slow on purpose to stay clear of YouTube's bot detection. */
+/**
+ * Min gap between two requests across all tabs. Deliberately NOT a user setting: request rate is what bot detection
+ * reacts to, so this is the safety net. The daily total is user-tunable (Settings.checkDailyLimit).
+ */
 export const CHECK_SPACING_MS = 3000;
 /** Pause after YouTube answers 429/403/5xx. */
 export const CHECK_BACKOFF_MS = 15 * 60_000;

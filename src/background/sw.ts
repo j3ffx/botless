@@ -4,7 +4,7 @@
  * It never makes network requests. It also rate-limits the opt-in background checks for all tabs
  * (checkPermit); the checks themselves are fetched by the content script (src/content/checker.ts).
  */
-import { CHECK_BACKOFF_MS, CHECK_DAILY_CAP, CHECK_SPACING_MS } from '../shared/check';
+import { CHECK_BACKOFF_MS, CHECK_SPACING_MS } from '../shared/check';
 import type { ChannelSummary, CheckPermit, SwRequest } from '../shared/messages';
 import { DEFAULT_SETTINGS } from '../shared/settings';
 import {
@@ -129,7 +129,7 @@ async function checkPermit(): Promise<CheckPermit> {
   const now = Date.now();
   const stats = await getCheckStats();
   if (stats.backoffUntil && stats.backoffUntil > now) return { ok: false, retryAfterMs: stats.backoffUntil - now, reason: 'backoff' };
-  if (stats.count >= CHECK_DAILY_CAP) return { ok: false, retryAfterMs: 30 * 60_000, reason: 'cap' };
+  if (stats.count >= settings.checkDailyLimit) return { ok: false, retryAfterMs: 30 * 60_000, reason: 'cap' };
   const wait = lastGrant + CHECK_SPACING_MS - now;
   if (wait > 0) return { ok: false, retryAfterMs: wait, reason: 'spacing' };
   lastGrant = now;

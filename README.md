@@ -71,8 +71,10 @@ Results count exactly like videos you watched. The limits:
 
 - **youtube.com only, with no cookies** (`credentials: "omit"`). The requests aren't tied to your account,
   so they can't affect your watch history or recommendations.
-- **Slow on purpose:** one request at a time, at least 3 seconds apart across all tabs, and at most 150
-  a day. If YouTube answers 429/403/5xx, checks pause for 15 minutes.
+- **Slow on purpose:** one request at a time, at least 3 seconds apart across all tabs. The spacing is
+  fixed, because request rate is what bot detection reacts to. The daily total is a setting: 150 by
+  default (roughly 50–150 channels), adjustable from 10 to 1000 in Settings. That default is a cautious
+  guess, since YouTube publishes no limit. If YouTube answers 429/403/5xx, checks pause for 15 minutes.
 - Only on-screen tiles, only channels with no data yet, never channels you marked, and never in
   background tabs.
 

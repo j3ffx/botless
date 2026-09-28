@@ -1,6 +1,5 @@
 import type { ChannelSummary, SwRequest, TabResponse } from '../shared/messages';
 import { VERDICT_LABEL } from '../shared/scoring';
-import { CHECK_DAILY_CAP } from '../shared/check';
 import { getCheckStats, getSettings, getTodayCount, KEY } from '../shared/storage';
 import type { PageInfo } from '../shared/types';
 
@@ -76,8 +75,8 @@ async function refreshChecks(): Promise<void> {
   const el = $('checks-status');
   if (!settings.backgroundChecks) el.textContent = CHECKS_HINT;
   else if (stats.backoffUntil && stats.backoffUntil > Date.now()) el.textContent = 'Paused for a few minutes: YouTube asked us to slow down.';
-  else if (stats.count >= CHECK_DAILY_CAP) el.textContent = `Daily limit reached (${CHECK_DAILY_CAP}). Resumes tomorrow.`;
-  else el.textContent = `${stats.count} of ${CHECK_DAILY_CAP} checks used today.`;
+  else if (stats.count >= settings.checkDailyLimit) el.textContent = `Daily limit reached (${settings.checkDailyLimit}). Resumes tomorrow.`;
+  else el.textContent = `${stats.count} of ${settings.checkDailyLimit} checks used today.`;
 }
 
 async function init(): Promise<void> {
