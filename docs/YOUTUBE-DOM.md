@@ -186,3 +186,37 @@ Observations:
   `html[data-botless-client]`, and `check.ts` holds a fallback.
 - Real-world example: We R Cinephiles' newest Short (`TCp_fT90F5s`) has **no** label, although several of
   its other videos do. That's why one label alone never makes a channel "Probably AI".
+
+## 6. "Don't recommend channel"
+
+Verified 2026-09-28 on a signed-in home feed with a French UI. A signed-out session doesn't have the item at
+all: logged-out menus only offer queue, save and share.
+
+**Data.** Every home-feed `yt-lockup-view-model` carries its ⋮ menu inline:
+
+```
+rawProps.data().metadata.lockupMetadataViewModel.menuButton.buttonViewModel.onTap.innertubeCommand
+  .showSheetCommand.panelLoadingStrategy.inlineContent.sheetViewModel.content.listViewModel.listItems[]
+```
+
+| Item (FR) | `leadingImage…clientResource.imageName` | Command |
+|---|---|---|
+| Pas intéressé ("Not interested") | `HIDE` | `feedbackEndpoint` (+ `undoFeedbackEndpoint`) |
+| **Ne pas recommander la chaîne** ("Don't recommend channel") | **`REMOVE`** | `feedbackEndpoint { feedbackToken, uiActions.hideEnclosingContainer }`, POST `/youtubei/v1/feedback`, response action `replaceEnclosingAction` → notification with an **Annuler/Undo** button (`undoFeedbackEndpoint.undoToken`) |
+
+We identify the item by `imageName: "REMOVE"` plus the presence of a `feedbackToken`, never by its text.
+16 of 21 home tiles had it; the rest were mixes and playlists. Scanning all tiles took 7 ms.
+
+**UI path used by the bridge.**
+
+1. The menu button is `.ytLockupMetadataViewModelMenuButton button` (aria-label "Autres actions" / "More actions").
+2. Clicking it opens `tp-yt-iron-dropdown` › `yt-sheet-view-model` › `yt-list-item-view-model` items. Each
+   item has an inner `<button>`. The rendered menu can contain items that aren't in the data (for example
+   "Télécharger"), so we match the rendered item's text against the **title taken from the data**.
+3. Search only inside **opened** dropdowns. YouTube keeps old menus' items in the DOM.
+4. Close with the dropdown's own `close()`. A synthetic `Escape` keydown did **not** close it (verified).
+5. In a hidden tab, the dropdown opens (`opened: true`) but doesn't lay out (`display: none`, zero-height
+   items). So we don't run in hidden tabs at all.
+
+Dry-run results (menu opened invisibly, item found, closed without clicking) on three different tiles: the
+item was found within 50 ms each time and the menu closed cleanly.

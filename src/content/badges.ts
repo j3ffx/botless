@@ -41,7 +41,7 @@ export function makeBadge(result: VerdictResult, cls = 'botless-badge'): HTMLEle
 }
 
 export function clearTile(el: HTMLElement): void {
-  el.querySelectorAll(':scope .botless-badge').forEach((b) => b.remove());
+  el.querySelectorAll(':scope .botless-badge, :scope .botless-dontrec').forEach((b) => b.remove());
   const root = itemRoot(el);
   root.classList.remove('botless-fade', 'botless-hide');
   delete el.dataset.botlessApplied;
@@ -63,3 +63,30 @@ export function applyTile(el: HTMLElement, result: VerdictResult, action: Action
 }
 
 export const hasBadge = (el: Element): boolean => !!el.querySelector(':scope .botless-badge');
+
+/** Tile text area (below the thumbnail, outside the video link, never covered by YouTube's hover preview). */
+const META = '[class*="LockupMetadataViewModelMetadata"], ytd-video-meta-block #metadata, #details #meta';
+
+export const hasDontRecButton = (el: Element): boolean => !!el.querySelector(':scope .botless-dontrec');
+/** Some layouts have no text area to hold the button; never "require" it there (it would re-render forever). */
+export const canHostDontRec = (el: Element): boolean => !!el.querySelector(META);
+
+/** Adds/removes the "Don't recommend channel" button. Returns false if the tile has no text area yet. */
+export function setDontRecButton(el: HTMLElement, show: boolean, onClick: (button: HTMLButtonElement) => void): boolean {
+  el.querySelectorAll(':scope .botless-dontrec').forEach((b) => b.remove());
+  if (!show) return true;
+  const host = el.querySelector<HTMLElement>(META);
+  if (!host) return false;
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'botless-dontrec';
+  b.textContent = "Don't recommend channel";
+  b.title = "Botless: tell YouTube not to recommend this channel anymore. YouTube shows an Undo.";
+  b.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onClick(b);
+  });
+  host.append(b);
+  return true;
+}

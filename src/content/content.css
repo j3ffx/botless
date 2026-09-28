@@ -55,6 +55,29 @@ html[dark] .botless-owner { color: #f1f1f1; background: rgba(255, 255, 255, 0.1)
 .botless-owner.botless-human .botless-dot { background: #2ba84a; }
 html[dark] .botless-owner.botless-human .botless-dot { background: #3ecf6e; }
 
+/* "Don't recommend channel" button, in the tile's text area under the views/date line. */
+.botless-dontrec {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 6px;
+  padding: 3px 10px;
+  border: 1px solid rgba(217, 44, 44, 0.45);
+  border-radius: 999px;
+  background: transparent;
+  color: #c62828;
+  font: 500 12px/1.4 "Roboto", "Arial", sans-serif;
+  cursor: pointer;
+}
+.botless-dontrec:hover { background: rgba(217, 44, 44, 0.08); }
+.botless-dontrec:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
+.botless-dontrec:disabled { opacity: 0.6; cursor: default; }
+html[dark] .botless-dontrec { color: #ff6b6b; border-color: rgba(255, 107, 107, 0.45); }
+html[dark] .botless-dontrec:hover { background: rgba(255, 107, 107, 0.1); }
+
+/* While Botless picks "Don't recommend channel" through YouTube's own menu, keep that menu invisible. */
+html.botless-quiet-menu ytd-popup-container,
+html.botless-quiet-menu tp-yt-iron-dropdown { opacity: 0 !important; }
+
 /* Auto-skip toast */
 .botless-toast {
   position: fixed;

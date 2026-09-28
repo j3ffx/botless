@@ -5,17 +5,19 @@
  */
 import type { ChannelSummary, SwRequest, TabRequest, TabResponse } from '../shared/messages';
 import { normalizeSettings, type Settings } from '../shared/settings';
-import { getChannels, getOverrides, getSettings, getVmap, isChannelKey, KEY } from '../shared/storage';
-import type { ChannelRecord, Overrides, PageInfo, VerdictResult } from '../shared/types';
+import { getChannels, getDontRecs, getOverrides, getSettings, getVmap, isChannelKey, KEY } from '../shared/storage';
+import type { ChannelRecord, DontRecs, Overrides, PageInfo, VerdictResult } from '../shared/types';
 import { resolveVerdict } from '../shared/verdict';
 import { checkNeed } from '../shared/check';
-import { applyTile, clearTile, hasBadge } from './badges';
+import { applyTile, canHostDontRec, clearTile, hasBadge, hasDontRecButton, setDontRecButton } from './badges';
 import { createChecker } from './checker';
 import { cancelSkip, maybeSkip, renderOwnerBadge } from './watch';
 
 let settings: Settings = normalizeSettings(undefined);
 let overrides: Overrides = {};
 let vmap: Record<string, string> = {};
+/** Channels already told "don't recommend" (by this or another tab). */
+let dontrecs: DontRecs = {};
 /** undefined = not loaded yet, null = loaded and unknown to us. */
 const channels = new Map<string, ChannelRecord | null>();
 /** Bumped whenever something that affects rendering changes; part of each tile's applied signature. */
@@ -46,6 +48,9 @@ function shutdown(): void {
   clearTimeout(loadTimer);
   cancelSkip();
   checker.stop();
+  clearTimeout(autoTimer);
+  autoQueue.clear();
+  document.removeEventListener('botless:dont-recommend-result', onDontRecResult);
   clearTimeout(scrollTimer);
   removeEventListener('scroll', onScroll);
   document.removeEventListener('visibilitychange', onVisibility);
@@ -156,9 +161,78 @@ function onScroll(): void {
 }
 function onVisibility(): void {
   checker.resume();
+  if (autoQueue.size) kickAuto(1000);
 }
 addEventListener('scroll', onScroll, { passive: true });
 document.addEventListener('visibilitychange', onVisibility);
+
+// ---- "Don't recommend channel" (performed by the bridge through YouTube's own menu) ----
+
+type DontRecResult = 'ok' | 'unavailable' | 'busy' | 'menu';
+const dontRecWaiters = new Map<string, (r: DontRecResult) => void>();
+
+function onDontRecResult(e: Event): void {
+  try {
+    const { videoId, result } = JSON.parse(String((e as CustomEvent).detail)) as { videoId: string; result: DontRecResult };
+    dontRecWaiters.get(videoId)?.(result);
+    dontRecWaiters.delete(videoId);
+  } catch {
+    /* ignore malformed */
+  }
+}
+document.addEventListener('botless:dont-recommend-result', onDontRecResult);
+
+function dontRecommend(videoId: string, channelId: string, auto: boolean): Promise<DontRecResult> {
+  return new Promise<DontRecResult>((resolve) => {
+    dontRecWaiters.set(videoId, resolve);
+    document.dispatchEvent(new CustomEvent('botless:dont-recommend', { detail: JSON.stringify({ videoId }) }));
+    setTimeout(() => dontRecWaiters.delete(videoId) && resolve('menu'), 5000);
+  }).then((r) => {
+    if (r === 'ok') void send({ type: 'dontRecommended', channelId, name: channels.get(channelId)?.name ?? undefined, auto });
+    return r;
+  });
+}
+
+async function onDontRecClick(button: HTMLButtonElement, videoId: string, channelId: string): Promise<void> {
+  button.disabled = true;
+  button.textContent = 'Telling YouTube…';
+  const r = await dontRecommend(videoId, channelId, false);
+  if (r === 'ok') return; // YouTube replaces the tile with its own "Undo" notice
+  button.disabled = false;
+  button.textContent = r === 'busy' ? 'Close the open menu, then retry' : "Couldn't do it — retry";
+}
+
+// Auto mode (opt-in): one channel at a time, a few seconds apart, never twice for the same channel.
+const autoQueue = new Map<string, string>(); // channelId -> videoId
+const autoTried = new Set<string>();
+let autoTimer: ReturnType<typeof setTimeout> | undefined;
+
+function offerAuto(videoId: string, channelId: string): void {
+  if (autoTried.has(channelId) || autoQueue.has(channelId)) return;
+  autoQueue.set(channelId, videoId);
+  kickAuto(1000);
+}
+
+function kickAuto(delayMs: number): void {
+  if (autoTimer !== undefined) return;
+  autoTimer = setTimeout(async () => {
+    autoTimer = undefined;
+    if (!alive() || !settings.enabled || !settings.autoDontRecommend || document.visibilityState !== 'visible') return;
+    const next = autoQueue.entries().next();
+    if (next.done) return;
+    const [channelId, videoId] = next.value;
+    autoQueue.delete(channelId);
+    if (!dontrecs[channelId]) {
+      const r = await dontRecommend(videoId, channelId, true);
+      if (r === 'busy') {
+        autoQueue.set(channelId, videoId); // user is typing / has a menu open: try again later
+        return kickAuto(5000);
+      }
+      autoTried.add(channelId);
+    }
+    if (autoQueue.size) kickAuto(3000);
+  }, delayMs);
+}
 
 function pass(): void {
   if (!alive()) return;
@@ -178,11 +252,18 @@ function pass(): void {
       checker.offer(vid, cid);
     }
     const action = result.verdict ? settings.actions[result.verdict] : 'none';
-    const sig = `${el.dataset.botlessKey}|${result.verdict}|${action}|${gen}`;
     const needsBadge = action === 'badge' || action === 'fade';
-    if (el.dataset.botlessApplied === sig && (!needsBadge || hasBadge(el))) continue;
+    // YouTube's own "Don't recommend channel": offered on Probably AI tiles where YouTube has it (signed in, feeds).
+    const canDontRec = result.verdict === 'ai' && !!vid && !!el.dataset.botlessDontrec && !dontrecs[cid];
+    const wantButton = canDontRec && needsBadge && canHostDontRec(el);
+    // Hidden tiles are display:none (never "on screen"), but that is exactly when auto mode is most wanted.
+    if (canDontRec && settings.autoDontRecommend && (action === 'hide' || onScreen(el))) offerAuto(vid!, cid);
+    const sig = `${el.dataset.botlessKey}|${result.verdict}|${action}|${wantButton}|${gen}`;
+    if (el.dataset.botlessApplied === sig && (!needsBadge || hasBadge(el)) && (!wantButton || hasDontRecButton(el))) continue;
     if (action === 'none') clearTile(el);
     else if (!applyTile(el, result, action)) continue; // thumbnail not rendered yet; retry next pass
+    const tileCid = cid;
+    setDontRecButton(el, wantButton, (button) => void onDontRecClick(button, vid!, tileCid));
     el.dataset.botlessApplied = sig;
     if (result.verdict === 'ai') noteFlagged(vid);
   }
@@ -280,6 +361,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
     } else if (key === KEY.overrides) {
       overrides = (newValue as Overrides) ?? {};
       dirty = true;
+    } else if (key === KEY.dontrec) {
+      dontrecs = (newValue as DontRecs) ?? {};
+      dirty = true;
     } else if (key === KEY.vmap) {
       vmap = (newValue as Record<string, string>) ?? {};
       dirty = true;
@@ -311,7 +395,7 @@ function refreshPill(): void {
 
 void (async () => {
   try {
-    [settings, overrides, vmap] = await Promise.all([getSettings(), getOverrides(), getVmap()]);
+    [settings, overrides, vmap, dontrecs] = await Promise.all([getSettings(), getOverrides(), getVmap(), getDontRecs()]);
   } catch {
     alive();
     return;

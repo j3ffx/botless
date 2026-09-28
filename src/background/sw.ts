@@ -10,6 +10,7 @@ import { DEFAULT_SETTINGS } from '../shared/settings';
 import {
   getChannels,
   getCheckStats,
+  getDontRecs,
   getOverrides,
   getSettings,
   getVmap,
@@ -104,6 +105,13 @@ async function handle(msg: SwRequest): Promise<unknown> {
 
     case 'getChannel':
       return summary(msg.channelId);
+
+    case 'dontRecommended':
+      return serial(async () => {
+        const all = await getDontRecs();
+        all[msg.channelId] = { at: Date.now(), name: msg.name, auto: msg.auto };
+        await local.set({ [KEY.dontrec]: all });
+      });
 
     case 'checkPermit':
       return serial(() => checkPermit());

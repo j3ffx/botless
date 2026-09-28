@@ -98,6 +98,13 @@ async function init(): Promise<void> {
     void refreshChecks();
   });
 
+  const autoDontRec = $<HTMLInputElement>('autodontrec');
+  autoDontRec.checked = settings.autoDontRecommend;
+  autoDontRec.addEventListener('change', async () => {
+    const s = await getSettings();
+    await chrome.storage.local.set({ [KEY.settings]: { ...s, autoDontRecommend: autoDontRec.checked } });
+  });
+
   $('mark-ai').addEventListener('click', () => void setMark($('mark-ai').classList.contains('is-active') ? null : 'ai'));
   $('mark-human').addEventListener('click', () => void setMark($('mark-human').classList.contains('is-active') ? null : 'human'));
   $('mark-clear').addEventListener('click', () => void setMark(null));

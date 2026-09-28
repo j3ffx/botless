@@ -76,6 +76,15 @@ export interface PageInfo {
   disclosureSource?: 'data' | 'dom' | 'unknown';
 }
 
+/** A channel Botless told YouTube not to recommend. YouTube's own Undo is the way back; we never repeat it. */
+export interface DontRecommend {
+  at: number;
+  name?: string;
+  auto: boolean;
+}
+
+export type DontRecs = Record<string, DontRecommend>;
+
 export interface CheckStats {
   day: string;
   /** Background checks done today, across all tabs. */

@@ -26,6 +26,8 @@ export interface Settings {
   backgroundChecks: boolean;
   /** Max background-check requests per day, across all tabs. No documented YouTube limit exists: 150 is a cautious default. */
   checkDailyLimit: number;
+  /** Opt-in: automatically use YouTube's "Don't recommend channel" on Probably AI channels (once per channel). */
+  autoDontRecommend: boolean;
   /** `next` uses the player's Next button (autoplay/playlist); `back` goes to the previous page. */
   skipTarget: 'next' | 'back';
   skipDelaySeconds: number;
@@ -50,6 +52,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autoSkip: false,
   backgroundChecks: false,
   checkDailyLimit: 150,
+  autoDontRecommend: false,
   skipTarget: 'next',
   skipDelaySeconds: 3,
   cacheTtlDays: 7,
@@ -92,6 +95,7 @@ export function normalizeSettings(raw: unknown): Settings {
     autoSkip: typeof r.autoSkip === 'boolean' ? r.autoSkip : d.autoSkip,
     backgroundChecks: typeof r.backgroundChecks === 'boolean' ? r.backgroundChecks : d.backgroundChecks,
     checkDailyLimit: Math.round(clamp(r.checkDailyLimit, 10, 1000, d.checkDailyLimit)),
+    autoDontRecommend: typeof r.autoDontRecommend === 'boolean' ? r.autoDontRecommend : d.autoDontRecommend,
     skipTarget: r.skipTarget === 'back' ? 'back' : 'next',
     skipDelaySeconds: Math.round(clamp(r.skipDelaySeconds, 1, 15, d.skipDelaySeconds)),
     cacheTtlDays: clamp(r.cacheTtlDays, 0.01, 365, d.cacheTtlDays),
