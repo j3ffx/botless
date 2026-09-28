@@ -6,6 +6,14 @@ body { width: 340px; padding: 14px; }
 .stat { display: flex; align-items: baseline; gap: 8px; margin: 14px 0 12px; }
 .stat-num { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.5px; }
 
+.checks {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius);
+}
+.checks-text { display: grid; gap: 2px; font-size: 12px; line-height: 1.35; }
+.checks-text strong { font-size: 13px; font-weight: 500; color: var(--text); }
+.checks-text label { cursor: pointer; }
+
 .card { background: var(--surface); border-radius: var(--radius); padding: 14px; }
 .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .card-title { display: flex; flex-direction: column; min-width: 0; }

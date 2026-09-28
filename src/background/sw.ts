@@ -1,12 +1,15 @@
 /**
  * Service worker: the single writer for channel data, overrides, the video->channel map and stats.
  * Every mutation runs through `serial()` so read-modify-write cycles from several tabs never interleave.
- * No network access: phase 1 keeps everything in chrome.storage.local.
+ * It never makes network requests. It also rate-limits the opt-in background checks for all tabs
+ * (checkPermit); the checks themselves are fetched by the content script (src/content/checker.ts).
  */
-import type { ChannelSummary, SwRequest } from '../shared/messages';
+import { CHECK_BACKOFF_MS, CHECK_DAILY_CAP, CHECK_SPACING_MS } from '../shared/check';
+import type { ChannelSummary, CheckPermit, SwRequest } from '../shared/messages';
 import { DEFAULT_SETTINGS } from '../shared/settings';
 import {
   getChannels,
+  getCheckStats,
   getOverrides,
   getSettings,
   getVmap,
@@ -101,7 +104,37 @@ async function handle(msg: SwRequest): Promise<unknown> {
 
     case 'getChannel':
       return summary(msg.channelId);
+
+    case 'checkPermit':
+      return serial(() => checkPermit());
+
+    case 'checkFailed':
+      // Rate limited, blocked or YouTube having trouble: pause everyone for a while.
+      if (msg.status === 429 || msg.status === 403 || msg.status >= 500) {
+        return serial(async () => {
+          const stats = await getCheckStats();
+          await local.set({ [KEY.checks]: { ...stats, backoffUntil: Date.now() + CHECK_BACKOFF_MS } });
+        });
+      }
+      return;
   }
+}
+
+/** In memory: the SW may restart, which at worst allows one early request. The daily count is persisted. */
+let lastGrant = 0;
+
+async function checkPermit(): Promise<CheckPermit> {
+  const settings = await getSettings();
+  if (!settings.enabled || !settings.backgroundChecks) return { ok: false, retryAfterMs: 60_000, reason: 'off' };
+  const now = Date.now();
+  const stats = await getCheckStats();
+  if (stats.backoffUntil && stats.backoffUntil > now) return { ok: false, retryAfterMs: stats.backoffUntil - now, reason: 'backoff' };
+  if (stats.count >= CHECK_DAILY_CAP) return { ok: false, retryAfterMs: 30 * 60_000, reason: 'cap' };
+  const wait = lastGrant + CHECK_SPACING_MS - now;
+  if (wait > 0) return { ok: false, retryAfterMs: wait, reason: 'spacing' };
+  lastGrant = now;
+  await local.set({ [KEY.checks]: { ...stats, count: stats.count + 1 } });
+  return { ok: true };
 }
 
 chrome.runtime.onMessage.addListener((msg: SwRequest, _sender, reply) => {

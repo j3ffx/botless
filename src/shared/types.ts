@@ -76,6 +76,14 @@ export interface PageInfo {
   disclosureSource?: 'data' | 'dom' | 'unknown';
 }
 
+export interface CheckStats {
+  day: string;
+  /** Background checks done today, across all tabs. */
+  count: number;
+  /** Epoch ms until which checks are paused after YouTube pushed back (429/403/5xx). */
+  backoffUntil?: number;
+}
+
 export interface DailyStats {
   day: string;
   /** Distinct video IDs flagged "Probably AI" today (capped). */

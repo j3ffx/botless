@@ -22,6 +22,17 @@
       <span class="muted" id="today-label">likely-AI videos flagged today</span>
     </section>
 
+    <section class="checks">
+      <div class="checks-text">
+        <label for="checks"><strong>Check channels on screen</strong></label>
+        <span class="muted" id="checks-status">Finds YouTube's AI label before you watch. Only asks YouTube, without your account.</span>
+      </div>
+      <label class="switch" title="Check channels on screen">
+        <input type="checkbox" id="checks" />
+        <span></span>
+      </label>
+    </section>
+
     <section class="card" id="channel" hidden>
       <div class="card-head">
         <div class="card-title">
@@ -55,7 +66,7 @@
     </section>
 
     <footer>
-      <span class="muted">Runs 100% locally</span>
+      <span class="muted">No servers · no tracking</span>
       <button class="btn link" id="open-options" type="button">Settings</button>
     </footer>
     <script src="popup.js"></script>

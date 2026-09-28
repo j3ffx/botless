@@ -168,3 +168,21 @@ call.
 
 If phase 2 adds a backend, the server could call it in batch (`videos.list?part=status&id=…`, up to 50
 IDs per call) to pre-compute channel ratios without the user watching anything.
+
+## 5. Endpoints used by background checks (opt-in)
+
+Verified 2026-09-28 from a youtube.com page, with `credentials: "omit"` (no cookies):
+
+| Request | Returns | Size / time |
+|---|---|---|
+| `POST /youtubei/v1/next?prettyPrint=false` with body `{"context":{"client":{"clientName":"WEB","clientVersion":"2.20260925.01.00","hl":"en","gl":"US"}},"videoId":"…"}` | Same data as a watch page: `contents.twoColumnWatchNextResults.results.results.contents[].videoSecondaryInfoRenderer.owner.videoOwnerRenderer` (channel ID + name) and the engagement panels with `howThisWasMadeSectionViewModel` | 330–560 KB of JSON (before compression), about 1 s. A full `/watch` page is 1.2–2 MB. |
+| `GET /feeds/videos.xml?channel_id=UC…` | Atom feed of the channel's 15 latest uploads (`<yt:videoId>`) | about 22 KB |
+
+Observations:
+
+- Unlabeled videos still include `structuredDescriptionContentRenderer`. Its absence therefore means "format
+  changed", not "no label", and in that case nothing is recorded.
+- The client version must look current. The bridge copies the page's `ytcfg INNERTUBE_CLIENT_VERSION` into
+  `html[data-botless-client]`, and `check.ts` holds a fallback.
+- Real-world example: We R Cinephiles' newest Short (`TCp_fT90F5s`) has **no** label, although several of
+  its other videos do. That's why one label alone never makes a channel "Probably AI".

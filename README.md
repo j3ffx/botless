@@ -4,8 +4,9 @@ A Manifest V3 Chrome extension that judges each **channel** as **Probably Human*
 **Inconclusive**, then badges, fades, hides or auto-skips that channel's videos. It is the YouTube
 counterpart of SkipIfFake.
 
-Phase 1 runs **entirely on your device**. It makes no network requests, has no analytics, and has no
-servers.
+Phase 1 runs **on your device**. It has no analytics and no servers. By default it makes no network
+requests at all. The only exception is the opt-in [background checks](#background-checks-opt-in), which
+talk to youtube.com only, without your account.
 
 ## Install (developer mode)
 
@@ -52,7 +53,33 @@ full findings, with real data samples, are in [`docs/YOUTUBE-DOM.md`](docs/YOUTU
 
 The label appears on the watch page, not on thumbnails. A channel's ratio therefore builds up from the
 videos **you** watch. A brand-new channel shows nothing until you've watched at least one of its videos,
-or until you mark it yourself. Phase 2's community votes are meant to fill this gap.
+or until you mark it yourself. Turn on background checks to fill this gap sooner.
+
+### Background checks (opt-in)
+
+Off by default. You can switch it on in the popup ("Check channels on screen") or in Settings. Botless
+then looks up YouTube's AI label for channels whose thumbnails are on your screen, before you watch
+anything:
+
+1. It checks the video on the tile, using YouTube's own `/youtubei/v1/next` endpoint (the same data a
+   watch page loads).
+2. If that video carries the label, it reads the channel's public feed (`/feeds/videos.xml`, about
+   22 KB) and checks one more recent video. Two of two labeled gives **Probably AI**. One label alone
+   only gives Inconclusive.
+
+Results count exactly like videos you watched. The limits:
+
+- **youtube.com only, with no cookies** (`credentials: "omit"`). The requests aren't tied to your account,
+  so they can't affect your watch history or recommendations.
+- **Slow on purpose:** one request at a time, at least 3 seconds apart across all tabs, and at most 150
+  a day. If YouTube answers 429/403/5xx, checks pause for 15 minutes.
+- Only on-screen tiles, only channels with no data yet, never channels you marked, and never in
+  background tabs.
+
+Code: [`src/content/checker.ts`](src/content/checker.ts) (scheduling),
+[`src/shared/check.ts`](src/shared/check.ts) (parsing, pure), and `checkPermit` in the service worker
+(the global rate limit). The endpoints are documented in
+[`docs/YOUTUBE-DOM.md`](docs/YOUTUBE-DOM.md#5-endpoints-used-by-background-checks-opt-in).
 
 ## Features
 
@@ -63,10 +90,10 @@ or until you mark it yourself. Phase 2's community votes are meant to fill this 
   is paused and a toast ("Skipping likely-AI video — Undo") counts down 3 seconds (configurable). Then it
   goes to the next video (or back, per your setting). **Undo** resumes playback and won't skip that
   video again in this tab.
-- **Popup:** on/off switch, today's count of flagged videos, the current channel's verdict and the
+- **Popup:** on/off switch, the background-checks switch with today's usage, today's count of flagged videos, the current channel's verdict and the
   reasons behind it, and Mark as AI / Mark as human. The community vote buttons are shown but disabled
   until phase 2.
-- **Options:** thresholds, actions, auto-skip, cache lifetimes, the list of channels you marked (with
+- **Options:** thresholds, actions, auto-skip, background checks, cache lifetimes, the list of channels you marked (with
   Remove), and JSON export/import. Imports are validated field by field.
 - Works with YouTube's light and dark themes (`html[dark]`). The popup and options pages follow
   `prefers-color-scheme`.
@@ -76,7 +103,7 @@ or until you mark it yourself. Phase 2's community votes are meant to fill this 
 | Permission | Why |
 |---|---|
 | `storage` | Saves settings, your marks, per-channel observations and the verdict cache in `chrome.storage.local`, on your device only. |
-| `host_permissions: https://www.youtube.com/*` | Runs the content scripts on YouTube, and lets the popup see that the active tab is a YouTube page so it can ask that tab which channel is showing. |
+| `host_permissions: https://www.youtube.com/*` | Runs the content scripts on YouTube, and lets the popup see that the active tab is a YouTube page so it can ask that tab which channel is showing. With background checks on, it is also the only host those requests go to. |
 
 That is all. No `tabs`, `scripting`, `webRequest`, `downloads`, `alarms` or other permissions. Export
 uses a normal `<a download>` link. Old channels are purged when the browser starts, so `alarms` isn't
@@ -95,8 +122,10 @@ context.**
 
 ## Privacy
 
-- Phase 1 sends **no data anywhere**. There is no `fetch`, XHR, WebSocket or remote code. You can check:
-  `grep -rE "fetch\(|XMLHttpRequest|WebSocket" src/` finds nothing.
+- By default Botless makes **no network requests**. The only `fetch` calls are in
+  `src/content/checker.ts`, and they run only if you turn on background checks. They go to
+  `www.youtube.com` only, without cookies. There is no remote code and no analytics. You can check with
+  `grep -rnE "fetch\(|XMLHttpRequest|WebSocket" src/`.
 - Everything is stored in `chrome.storage.local`:
 
   | Key | Contents | Lifetime |
@@ -106,6 +135,7 @@ context.**
   | `c:<channelId>` | video IDs you watched from that channel + label yes/no (last 200), cached verdict | cache re-checked after 7 days; channel forgotten after 180 days unseen |
   | `vmap` | video → channel pairs, used to badge channel-less Shorts tiles | newest 3000 |
   | `stats` | today's flagged video IDs, for the counter | reset daily |
+  | `checks` | number of background checks today, plus any pause | reset daily |
 
 - **Clear observations** in Options wipes everything except your settings and marks.
 
@@ -125,19 +155,21 @@ src/
   content/index.ts        isolated world: reads stamps, looks up verdicts, applies badge/fade/hide, pill, auto-skip
   content/badges.ts       thumbnail badge + fade/hide
   content/watch.ts        owner pill, toast, Undo, skip
-  background/sw.ts        service worker: the single, serialized writer for all storage
+  content/checker.ts      opt-in background checks: queue + fetch (youtube.com, no cookies)
+  background/sw.ts        service worker: the single, serialized writer for all storage + global check rate limit
   popup/, options/        vanilla TS UI (no framework needed at this size)
   shared/scoring.ts       ★ pure verdict model
   shared/verdict.ts       cache/TTL + observation bookkeeping (pure)
   shared/disclosure.ts    official-label detection (pure; JSON or DOM)
   shared/extract.ts       channel/video ID extraction (pure)
   shared/backup.ts        export/import validation (pure)
+  shared/check.ts         background-check parsing + "what does this channel need next" (pure)
 ```
 
 **Performance.** The MutationObserver callback only sets a flag. Work runs at most every ~150 ms via
 `requestIdleCallback`. Each pass compares one `href` per tile and skips tiles that haven't changed, and
 DOM writes are batched in `requestAnimationFrame`. Nothing runs in hidden tabs. Storage writes go through
-the service worker in batches of up to 2 seconds. The bundles are about 35 KB in total, minified.
+the service worker in batches of up to 2 seconds. The bundles are about 43 KB in total, minified.
 
 ## Development
 

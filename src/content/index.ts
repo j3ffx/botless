@@ -8,7 +8,9 @@ import { normalizeSettings, type Settings } from '../shared/settings';
 import { getChannels, getOverrides, getSettings, getVmap, isChannelKey, KEY } from '../shared/storage';
 import type { ChannelRecord, Overrides, PageInfo, VerdictResult } from '../shared/types';
 import { resolveVerdict } from '../shared/verdict';
+import { checkNeed } from '../shared/check';
 import { applyTile, clearTile, hasBadge } from './badges';
+import { createChecker } from './checker';
 import { cancelSkip, maybeSkip, renderOwnerBadge } from './watch';
 
 let settings: Settings = normalizeSettings(undefined);
@@ -43,6 +45,10 @@ function shutdown(): void {
   clearTimeout(flushTimer);
   clearTimeout(loadTimer);
   cancelSkip();
+  checker.stop();
+  clearTimeout(scrollTimer);
+  removeEventListener('scroll', onScroll);
+  document.removeEventListener('visibilitychange', onVisibility);
   document.removeEventListener('botless:page', onPageEvent);
   document.removeEventListener('botless:scan', schedulePass);
   document.removeEventListener('yt-navigate-start', onNavigateStart);
@@ -124,6 +130,36 @@ function noteFlagged(vid: string | undefined): void {
 
 // ---- Tile pass (runs after each debounced bridge scan) ----
 
+// ---- Opt-in background checks (src/content/checker.ts) ----
+
+const checker = createChecker({
+  send,
+  record: (cid) => channels.get(cid) ?? undefined,
+  override: (cid) => overrides[cid],
+  active: () => alive() && settings.enabled && settings.backgroundChecks && document.visibilityState === 'visible',
+});
+
+function onScreen(el: Element): boolean {
+  const r = el.getBoundingClientRect();
+  return r.width > 0 && r.bottom > 0 && r.top < innerHeight;
+}
+
+// Scrolling through tiles that are already loaded changes nothing in the DOM, so no scan fires; while checks are
+// on, re-run the pass a couple of times a second so newly visible tiles get offered.
+let scrollTimer: ReturnType<typeof setTimeout> | undefined;
+function onScroll(): void {
+  if (!settings.backgroundChecks || scrollTimer !== undefined) return;
+  scrollTimer = setTimeout(() => {
+    scrollTimer = undefined;
+    schedulePass();
+  }, 500);
+}
+function onVisibility(): void {
+  checker.resume();
+}
+addEventListener('scroll', onScroll, { passive: true });
+document.addEventListener('visibilitychange', onVisibility);
+
 function pass(): void {
   if (!alive()) return;
   const tiles = document.querySelectorAll<HTMLElement>('[data-botless-key], [data-botless-applied]');
@@ -138,6 +174,9 @@ function pass(): void {
     }
     const result = verdictFor(cid);
     if (!result) continue; // loading; the load callback schedules another pass
+    if (settings.backgroundChecks && vid && checkNeed(channels.get(cid) ?? undefined, overrides[cid]) && onScreen(el)) {
+      checker.offer(vid, cid);
+    }
     const action = result.verdict ? settings.actions[result.verdict] : 'none';
     const sig = `${el.dataset.botlessKey}|${result.verdict}|${action}|${gen}`;
     const needsBadge = action === 'badge' || action === 'fade';
@@ -236,6 +275,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
       settings = normalizeSettings(newValue);
       if (wasEnabled !== settings.enabled && page) void onPage(page);
       if (!settings.autoSkip || !settings.enabled) cancelSkip();
+      if (!settings.backgroundChecks || !settings.enabled) checker.stop();
       dirty = true;
     } else if (key === KEY.overrides) {
       overrides = (newValue as Overrides) ?? {};

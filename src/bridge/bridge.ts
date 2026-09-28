@@ -197,6 +197,10 @@ function emit(info: PageInfo): void {
 
 function readPage(detail?: { response?: NavData }): void {
   clearTimeout(domRetry);
+  // Background checks must present the same web client version as the page (it changes every few days).
+  const ytcfg = (window as unknown as { ytcfg?: { get?: (k: string) => unknown } }).ytcfg;
+  const clientVersion = ytcfg?.get?.('INNERTUBE_CLIENT_VERSION');
+  if (typeof clientVersion === 'string') document.documentElement.dataset.botlessClient = clientVersion;
   const url = location.href;
   const pageType = pageTypeFromPath(location.pathname);
   const nav = currentNavData(detail);

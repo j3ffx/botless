@@ -6,15 +6,17 @@
  *   c:<UC…>       ChannelRecord                    per-channel observations + cached verdict (TTL)
  *   vmap          Record<videoId, channelId>       learned mapping so channel-less Shorts tiles can be badged
  *   stats         DailyStats                       today's flagged-video counter
+ *   checks        CheckStats                       background checks done today + backoff (opt-in feature)
  */
 import { normalizeSettings, type Settings } from './settings';
-import type { ChannelRecord, DailyStats, Overrides } from './types';
+import type { ChannelRecord, CheckStats, DailyStats, Overrides } from './types';
 
 export const KEY = {
   settings: 'settings',
   overrides: 'overrides',
   vmap: 'vmap',
   stats: 'stats',
+  checks: 'checks',
   channel: (id: string) => `c:${id}`,
 } as const;
 
@@ -49,6 +51,12 @@ export async function getVmap(): Promise<Record<string, string>> {
 
 export const today = (now = new Date()): string =>
   `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+export async function getCheckStats(): Promise<CheckStats> {
+  const { checks } = await local().get(KEY.checks);
+  const c = checks as CheckStats | undefined;
+  return c && c.day === today() ? c : { day: today(), count: 0, backoffUntil: c?.backoffUntil };
+}
 
 export async function getTodayCount(): Promise<number> {
   const { stats } = await local().get(KEY.stats);
