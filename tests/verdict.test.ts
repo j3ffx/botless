@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS } from '../src/shared/settings';
 import type { ChannelRecord } from '../src/shared/types';
-import { addObservation, MAX_VIDEOS_PER_CHANNEL, resolveVerdict, withFreshCache } from '../src/shared/verdict';
+import { addObservation, MAX_VIDEOS_PER_CHANNEL, resolveVerdict, withFreshCache, withVideoLabel } from '../src/shared/verdict';
 
 const CID = 'UCHnyfMqiRRG1u-2MsSQLbXA';
 const DAY = 86_400_000;
@@ -55,6 +55,16 @@ describe('resolveVerdict cache + TTL', () => {
     const cached = withFreshCache(recordWith(8, 2), s, 0); // 80%: inconclusive at the default 90%
     const looser = { ...s, thresholds: { ...s.thresholds, aiRatio: 0.75 } };
     expect(resolveVerdict(cached, undefined, looser, 1).result.verdict).toBe('ai');
+  });
+
+  it('treats a single labeled video as AI for that video, without changing the channel verdict', () => {
+    const channel = resolveVerdict(recordWith(1, 0), undefined, s, 0).result; // 1 of 1 labeled -> Inconclusive
+    expect(channel.verdict).toBe('inconclusive');
+    const video = withVideoLabel(channel, true, undefined);
+    expect(video.verdict).toBe('ai');
+    expect(video.reasons[0]!.text).toBe("This video carries YouTube's AI label");
+    expect(withVideoLabel(channel, false, undefined)).toBe(channel);
+    expect(withVideoLabel(channel, true, { verdict: 'human', at: 0 })).toBe(channel); // the user's mark wins
   });
 
   it('lets an override beat the cache', () => {

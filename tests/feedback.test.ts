@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findDontRecommendItem } from '../src/shared/feedback';
+import { findDontRecommendItem, findFeedbackItem } from '../src/shared/feedback';
 
 /** A ⋮ menu item as found in a signed-in home feed lockup (tokens shortened). */
 const item = (title: string, icon: string, feedback = true) => ({
@@ -56,6 +56,20 @@ describe('findDontRecommendItem', () => {
   it('is absent when signed out (menu has no feedback items)', () => {
     expect(findDontRecommendItem(lockup(item('Add to queue', 'ADD_TO_QUEUE_TAIL', false), item('Share', 'SHARE', false)))).toBeNull();
     expect(findDontRecommendItem(undefined)).toBeNull();
+  });
+
+  it('finds "Not interested" (HIDE) when asked for the video-level action — the only one Shorts tiles offer', () => {
+    // Shorts tile menu as seen on a signed-in home feed: queue, not interested, feedback, report.
+    const shortsMenu = {
+      menuOnTap: { innertubeCommand: { showSheetCommand: { panelLoadingStrategy: { inlineContent: { sheetViewModel: { content: { listViewModel: { listItems: [
+        item("Ajouter à la file d'attente", 'ADD_TO_QUEUE_TAIL', false),
+        item('Pas intéressé', 'HIDE'),
+        item('Envoyer des commentaires', 'FEEDBACK', false),
+        item('Signaler', 'FLAG', false),
+      ] } } } } } } } },
+    };
+    expect(findFeedbackItem(shortsMenu, 'video')).toEqual({ title: 'Pas intéressé' });
+    expect(findFeedbackItem(shortsMenu, 'channel')).toBeNull();
   });
 
   it('supports classic Polymer menus', () => {

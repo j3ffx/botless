@@ -36,11 +36,12 @@ export interface CheckerDeps {
  * 'video'   — check this specific video.
  * 'confirm' — the channel has exactly one (labeled) video: look up its feed and check one more.
  */
-type Job = { kind: 'video'; videoId: string; channelId: string } | { kind: 'confirm'; channelId: string };
+/** channelId null = a tile that doesn't say its channel (Shorts): the check reveals it. */
+type Job = { kind: 'video'; videoId: string; channelId: string | null } | { kind: 'confirm'; channelId: string };
 
 export function createChecker(deps: CheckerDeps) {
-  /** Tiles on screen: videoId -> channelId, insertion order = offer order (newest last). */
-  const pending = new Map<string, string>();
+  /** Tiles on screen: videoId -> channelId (null if unknown), insertion order = offer order (newest last). */
+  const pending = new Map<string, string | null>();
   /** Videos picked from a channel feed to confirm a single label: videoId -> channelId. Served first. */
   const confirmVideos = new Map<string, string>();
   const confirms = new Set<string>();
@@ -73,6 +74,10 @@ export function createChecker(deps: CheckerDeps) {
     }
     for (const [videoId, channelId] of [...pending].reverse()) {
       pending.delete(videoId);
+      if (channelId === null) {
+        if (!tried.has(videoId)) return { kind: 'video', videoId, channelId: null };
+        continue;
+      }
       const n = need(channelId);
       if (n === 'video' && !tried.has(videoId)) return { kind: 'video', videoId, channelId };
       // e.g. a channel left at "1 labeled video" by an earlier session: confirm it now.
@@ -83,7 +88,7 @@ export function createChecker(deps: CheckerDeps) {
 
   function requeue(job: Job): void {
     if (job.kind === 'confirm') confirms.add(job.channelId);
-    else if (need(job.channelId) === 'confirm') confirmVideos.set(job.videoId, job.channelId);
+    else if (job.channelId !== null && need(job.channelId) === 'confirm') confirmVideos.set(job.videoId, job.channelId);
     else pending.set(job.videoId, job.channelId);
   }
 
@@ -111,9 +116,12 @@ export function createChecker(deps: CheckerDeps) {
     }
   }
 
-  async function saveResult(videoId: string, fallbackChannel: string, r: CheckResult): Promise<void> {
+  async function saveResult(videoId: string, fallbackChannel: string | null, r: CheckResult): Promise<void> {
     if (r.disclosure === null) return; // unknown response format: record nothing rather than a false "no label"
     const channelId = r.channelId ?? fallbackChannel; // the response's owner wins (it's authoritative)
+    if (!channelId) return;
+    // Channel-less tile (Short): remember which channel it belongs to, so the tile can be judged from now on.
+    if (fallbackChannel === null) void deps.send({ type: 'learnVideos', pairs: [[videoId, channelId]] });
     const summary = (await deps.send({
       type: 'observe',
       channelId,
@@ -169,7 +177,7 @@ export function createChecker(deps: CheckerDeps) {
 
   return {
     /** A tile whose channel may need a check is on screen. */
-    offer(videoId: string, channelId: string): void {
+    offer(videoId: string, channelId: string | null): void {
       if (tried.has(videoId)) return;
       pending.delete(videoId);
       pending.set(videoId, channelId);

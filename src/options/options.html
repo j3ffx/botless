@@ -25,6 +25,35 @@
           <label class="switch"><input type="checkbox" id="enabled" data-path="enabled" /><span></span></label>
         </div>
         <div class="field">
+          <div><label for="autoSkip">Auto-skip “Probably AI” videos</label><p class="hint">Shows an Undo toast first.</p></div>
+          <label class="switch"><input type="checkbox" id="autoSkip" data-path="autoSkip" /><span></span></label>
+        </div>
+        <div class="field">
+          <div><label for="skipTarget">When skipping a video</label><p class="hint">Shorts always move to the next Short.</p></div>
+          <select id="skipTarget" data-path="skipTarget">
+            <option value="next">Play the next video</option>
+            <option value="back">Go back</option>
+          </select>
+        </div>
+        <div class="field">
+          <div><label for="skipDelaySeconds">Undo window</label><p class="hint">Seconds before the skip happens.</p></div>
+          <input type="number" id="skipDelaySeconds" data-path="skipDelaySeconds" min="1" max="15" step="1" />
+        </div>
+      </section>
+
+      <section>
+        <h2>Connect to YouTube</h2>
+        <p class="muted section-intro">
+          Off, Botless is fully local: verdicts only come from the videos you watch and nothing is sent anywhere.
+          On, it can ask YouTube about videos on your screen and use YouTube’s own “Don’t recommend channel” /
+          “Not interested”, which also cleans your recommendations in the YouTube app.
+        </p>
+        <div class="field">
+          <div><label for="youtubeRequests">Connect to YouTube</label><p class="hint">Same switch as in the popup.</p></div>
+          <label class="switch"><input type="checkbox" id="youtubeRequests" data-path="youtubeRequests" /><span></span></label>
+        </div>
+        <div class="sub" id="youtube-sub">
+        <div class="field">
           <div>
             <label for="backgroundChecks">Check channels on screen</label>
             <p class="hint">
@@ -47,29 +76,15 @@
         </div>
         <div class="field">
           <div>
-            <label for="autoDontRecommend">Tell YouTube to stop recommending Probably AI channels</label>
+            <label for="autoDontRecommend">Tell YouTube automatically</label>
             <p class="hint">
-              Uses YouTube’s own “Don’t recommend channel” once per channel, from your home feed (signed in only).
-              Your recommendations follow your account, so this also cleans the YouTube app. YouTube shows an Undo
-              each time. Without this, a “Don’t recommend channel” button appears under Probably AI videos instead.
+              Uses YouTube’s own “Don’t recommend channel” once per Probably AI channel, and “Not interested” on
+              Probably AI Shorts (signed in, home feed). YouTube shows an Undo each time. Without this, those
+              buttons appear under Probably AI videos and Shorts for you to click.
             </p>
           </div>
           <label class="switch"><input type="checkbox" id="autoDontRecommend" data-path="autoDontRecommend" /><span></span></label>
         </div>
-        <div class="field">
-          <div><label for="autoSkip">Auto-skip “Probably AI” videos</label><p class="hint">Shows an Undo toast first.</p></div>
-          <label class="switch"><input type="checkbox" id="autoSkip" data-path="autoSkip" /><span></span></label>
-        </div>
-        <div class="field">
-          <div><label for="skipTarget">When skipping a video</label><p class="hint">Shorts always move to the next Short.</p></div>
-          <select id="skipTarget" data-path="skipTarget">
-            <option value="next">Play the next video</option>
-            <option value="back">Go back</option>
-          </select>
-        </div>
-        <div class="field">
-          <div><label for="skipDelaySeconds">Undo window</label><p class="hint">Seconds before the skip happens.</p></div>
-          <input type="number" id="skipDelaySeconds" data-path="skipDelaySeconds" min="1" max="15" step="1" />
         </div>
       </section>
 

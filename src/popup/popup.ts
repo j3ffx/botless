@@ -68,15 +68,19 @@ async function refreshCount(): Promise<void> {
   $('today-label').textContent = `likely-AI video${n === 1 ? '' : 's'} flagged today`;
 }
 
-const CHECKS_HINT = "Finds YouTube's AI label before you watch. Only asks YouTube, without your account.";
+const OFF_HINT = 'Off: Botless only learns from what you watch. Nothing is sent anywhere.';
 
-async function refreshChecks(): Promise<void> {
+/** One line explaining what the gate does right now, with today's check usage when relevant. */
+async function refreshYoutube(): Promise<void> {
   const [settings, stats] = await Promise.all([getSettings(), getCheckStats()]);
-  const el = $('checks-status');
-  if (!settings.backgroundChecks) el.textContent = CHECKS_HINT;
-  else if (stats.backoffUntil && stats.backoffUntil > Date.now()) el.textContent = 'Paused for a few minutes: YouTube asked us to slow down.';
-  else if (stats.count >= settings.checkDailyLimit) el.textContent = `Daily limit reached (${settings.checkDailyLimit}). Resumes tomorrow.`;
-  else el.textContent = `${stats.count} of ${settings.checkDailyLimit} checks used today.`;
+  const el = $('youtube-status');
+  if (!settings.youtubeRequests) return void (el.textContent = OFF_HINT);
+  const parts = ['On: checks channels on screen and can tell YouTube to stop recommending AI.'];
+  if (!settings.backgroundChecks) parts[0] = 'On: can tell YouTube to stop recommending AI. Checks are off in Settings.';
+  else if (stats.backoffUntil && stats.backoffUntil > Date.now()) parts.push('Checks paused: YouTube asked to slow down.');
+  else if (stats.count >= settings.checkDailyLimit) parts.push(`Daily limit reached (${settings.checkDailyLimit}).`);
+  else parts.push(`${stats.count} of ${settings.checkDailyLimit} checks today.`);
+  el.textContent = parts.join(' ');
 }
 
 async function init(): Promise<void> {
@@ -90,19 +94,12 @@ async function init(): Promise<void> {
     document.body.classList.toggle('off', !toggle.checked);
   });
 
-  const checks = $<HTMLInputElement>('checks');
-  checks.checked = settings.backgroundChecks;
-  checks.addEventListener('change', async () => {
+  const youtube = $<HTMLInputElement>('youtube');
+  youtube.checked = settings.youtubeRequests;
+  youtube.addEventListener('change', async () => {
     const s = await getSettings();
-    await chrome.storage.local.set({ [KEY.settings]: { ...s, backgroundChecks: checks.checked } });
-    void refreshChecks();
-  });
-
-  const autoDontRec = $<HTMLInputElement>('autodontrec');
-  autoDontRec.checked = settings.autoDontRecommend;
-  autoDontRec.addEventListener('change', async () => {
-    const s = await getSettings();
-    await chrome.storage.local.set({ [KEY.settings]: { ...s, autoDontRecommend: autoDontRec.checked } });
+    await chrome.storage.local.set({ [KEY.settings]: { ...s, youtubeRequests: youtube.checked } });
+    void refreshYoutube();
   });
 
   $('mark-ai').addEventListener('click', () => void setMark($('mark-ai').classList.contains('is-active') ? null : 'ai'));
@@ -112,9 +109,9 @@ async function init(): Promise<void> {
 
   chrome.storage.onChanged.addListener((changes) => {
     if (changes[KEY.stats]) void refreshCount();
-    if (changes[KEY.checks]) void refreshChecks();
+    if (changes[KEY.checks] || changes[KEY.settings]) void refreshYoutube();
   });
-  await Promise.all([refreshCount(), refreshChecks()]);
+  await Promise.all([refreshCount(), refreshYoutube()]);
 
   page = await activePage();
   if (!page) {

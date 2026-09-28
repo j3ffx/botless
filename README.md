@@ -4,9 +4,10 @@ A Manifest V3 Chrome extension that judges each **channel** as **Probably Human*
 **Inconclusive**, then badges, fades, hides or auto-skips that channel's videos. It is the YouTube
 counterpart of SkipIfFake.
 
-Phase 1 runs **on your device**. It has no analytics and no servers. By default it makes no network
-requests at all. The only exception is the opt-in [background checks](#background-checks-opt-in), which
-talk to youtube.com only, without your account.
+Phase 1 runs **on your device**. It has no analytics and no servers. The popup has two switches:
+**Botless on/off**, and **[Connect to YouTube](#connect-to-youtube-opt-in)**. The second one is off by
+default. While it's off, Botless is fully local and makes no requests of its own; it learns only from
+what you watch.
 
 ## Install (developer mode)
 
@@ -53,16 +54,33 @@ full findings, with real data samples, are in [`docs/YOUTUBE-DOM.md`](docs/YOUTU
 
 The label appears on the watch page, not on thumbnails. A channel's ratio therefore builds up from the
 videos **you** watch. A brand-new channel shows nothing until you've watched at least one of its videos,
-or until you mark it yourself. Turn on background checks to fill this gap sooner.
+or until you mark it yourself. Turn on **Connect to YouTube** to fill this gap sooner.
 
-### Background checks (opt-in)
+**A labeled video is AI content, even if its channel isn't judged yet.** When a video itself carries
+YouTube's AI label, that one video is treated as *Probably AI*: badge, fade or hide on its tile, and
+auto-skip when it plays. This matters most for Shorts. The channel's verdict isn't changed by one video,
+and your own "human" mark on a channel still wins.
 
-Off by default. You can switch it on in the popup ("Check channels on screen") or in Settings. Botless
-then looks up YouTube's AI label for channels whose thumbnails are on your screen, before you watch
+## Connect to YouTube (opt-in)
+
+This is the second switch in the popup, off by default. It gates everything that goes beyond reading the
+page you're on:
+
+| Feature | What it does | Fine-tuning (Settings → Connect to YouTube) |
+|---|---|---|
+| **Background checks** | Looks up the AI label for videos on your screen, including Shorts | on by default under the gate; daily limit |
+| **"Don't recommend channel" / "Not interested"** | Buttons under *Probably AI* videos and Shorts that use YouTube's own feedback actions | automatic mode, off by default |
+
+Turn it off and Botless goes back to being fully local: it's less informed, but it doesn't talk to anyone.
+
+### Background checks
+
+Botless looks up YouTube's AI label for videos whose thumbnails are on your screen, before you watch
 anything:
 
 1. It checks the video on the tile, using YouTube's own `/youtubei/v1/next` endpoint (the same data a
-   watch page loads).
+   watch page loads). This also works for **Shorts tiles**, which don't show their channel: the response
+   reveals it, and Botless remembers which channel the Short belongs to.
 2. If that video carries the label, it reads the channel's public feed (`/feeds/videos.xml`, about
    22 KB) and checks one more recent video. Two of two labeled gives **Probably AI**. One label alone
    only gives Inconclusive.
@@ -75,8 +93,8 @@ Results count exactly like videos you watched. The limits:
   fixed, because request rate is what bot detection reacts to. The daily total is a setting: 150 by
   default (roughly 50–150 channels), adjustable from 10 to 1000 in Settings. That default is a cautious
   guess, since YouTube publishes no limit. If YouTube answers 429/403/5xx, checks pause for 15 minutes.
-- Only on-screen tiles, only channels with no data yet, never channels you marked, and never in
-  background tabs.
+- Only on-screen tiles, only channels with no data yet (or Shorts whose channel is unknown), never channels
+  you marked, and never in background tabs.
 
 Code: [`src/content/checker.ts`](src/content/checker.ts) (scheduling),
 [`src/shared/check.ts`](src/shared/check.ts) (parsing, pure), and `checkPermit` in the service worker
@@ -86,24 +104,26 @@ Code: [`src/content/checker.ts`](src/content/checker.ts) (scheduling),
 ## Features
 
 - **Feed, search, sidebar, Shorts shelves:** a small badge on thumbnails (red *Probably AI*, grey
-  *Inconclusive*, optional green *Probably Human*).
+  *Inconclusive*, optional green *Probably Human*). A video or Short that itself carries the AI label is
+  *Probably AI* on its own.
 - **Action per verdict:** badge only, fade, or hide completely.
 - **Watch page and Shorts:** a pill next to the channel name. With auto-skip on, a *Probably AI* video
   is paused and a toast ("Skipping likely-AI video — Undo") counts down 3 seconds (configurable). Then it
   goes to the next video (or back, per your setting). **Undo** resumes playback and won't skip that
   video again in this tab.
-- **"Don't recommend channel":** when you're signed in, *Probably AI* videos in your home and
-  recommendation feeds get a **Don't recommend channel** button under the views/date line. It uses
-  YouTube's own action of that name, so your **recommendations change on every device, including the
-  YouTube app**, and YouTube shows its usual **Undo**. An opt-in automatic mode (off by default; popup or
-  Settings) does it once per *Probably AI* channel, a few seconds apart, and never again for that channel
-  (so pressing YouTube's Undo sticks). See [How "Don't recommend" works](#how-dont-recommend-works).
-- **Popup:** on/off switch, the background-checks and "Don't recommend" switches, today's check usage,
-  today's count of flagged videos, the current channel's verdict and the reasons behind it, and Mark as
-  AI / Mark as human. The community vote buttons are shown but disabled until phase 2.
-- **Options:** thresholds, actions, auto-skip, background checks and their daily limit, automatic "Don't
-  recommend", cache lifetimes, the list of channels you marked (with Remove), and JSON export/import.
-  Imports are validated field by field.
+- **"Don't recommend channel" / "Not interested"** (needs Connect to YouTube; signed in): *Probably AI*
+  videos in your home and recommendation feeds get a **Don't recommend channel** button under the
+  views/date line. *Probably AI* Shorts get **Not interested**, the only option YouTube offers for Shorts.
+  These are YouTube's own actions, so your **recommendations change on every device, including the
+  YouTube app**, and YouTube shows its usual **Undo**. An automatic mode (off by default, in Settings)
+  does it for you, a few seconds apart, and never twice for the same channel (so pressing YouTube's Undo
+  sticks). See [How "Don't recommend" works](#how-dont-recommend-works).
+- **Popup:** exactly two switches (Botless on/off, Connect to YouTube, with today's check usage), today's
+  count of flagged videos, the current channel's verdict and the reasons behind it, and Mark as AI / Mark
+  as human. The community vote buttons are shown but disabled until phase 2.
+- **Options:** general (auto-skip), Connect to YouTube (background checks, daily limit, automatic
+  feedback; greyed out while the gate is off), actions, thresholds, cache lifetimes, the list of channels
+  you marked (with Remove), and JSON export/import. Imports are validated field by field.
 - Works with YouTube's light and dark themes (`html[dark]`). The popup and options pages follow
   `prefers-color-scheme`.
 
@@ -112,7 +132,7 @@ Code: [`src/content/checker.ts`](src/content/checker.ts) (scheduling),
 | Permission | Why |
 |---|---|
 | `storage` | Saves settings, your marks, per-channel observations and the verdict cache in `chrome.storage.local`, on your device only. |
-| `host_permissions: https://www.youtube.com/*` | Runs the content scripts on YouTube, and lets the popup see that the active tab is a YouTube page so it can ask that tab which channel is showing. With background checks on, it is also the only host those requests go to. |
+| `host_permissions: https://www.youtube.com/*` | Runs the content scripts on YouTube, and lets the popup see that the active tab is a YouTube page so it can ask that tab which channel is showing. With Connect to YouTube on, it is also the only host Botless's own requests go to. |
 
 That is all. No `tabs`, `scripting`, `webRequest`, `downloads`, `alarms` or other permissions. Export
 uses a normal `<a download>` link. Old channels are purged when the browser starts, so `alarms` isn't
@@ -133,8 +153,9 @@ scripts could in principle see those attributes and events. They only contain fa
 
 Botless never calls YouTube's feedback API itself: that would mean handling your sign-in cookies. Instead
 it does exactly what you would do. It opens the tile's ⋮ menu (kept invisible for about a quarter of a
-second) and picks the item whose icon is `REMOVE`, the one YouTube labels "Don't recommend channel" in
-your language. YouTube then sends the request with its own sign-in and shows its own Undo notice.
+second) and picks the item by its icon: `REMOVE` is "Don't recommend channel", and `HIDE` is "Not
+interested" (used for Shorts, which don't offer the channel option). Matching on the icon works in any
+language. YouTube then sends the request with its own sign-in and shows its own Undo notice.
 
 It never runs while you're typing, while a menu is open, or in a background tab. It only exists where
 YouTube offers the item: signed in, mostly on the home and recommendation feeds (not in search results).
@@ -143,8 +164,8 @@ Channels already done are listed under `dontrec` in storage, so Botless never re
 
 ## Privacy
 
-- By default Botless makes **no network requests**. The only `fetch` calls are in
-  `src/content/checker.ts`, and they run only if you turn on background checks. They go to
+- By default Botless makes **no network requests** of its own. The only `fetch` calls are in
+  `src/content/checker.ts`, and they run only while **Connect to YouTube** is on. They go to
   `www.youtube.com` only, without cookies. There is no remote code and no analytics. You can check with
   `grep -rnE "fetch\(|XMLHttpRequest|WebSocket" src/`.
 - Everything is stored in `chrome.storage.local`:
@@ -191,7 +212,7 @@ src/
 **Performance.** The MutationObserver callback only sets a flag. Work runs at most every ~150 ms via
 `requestIdleCallback`. Each pass compares one `href` per tile and skips tiles that haven't changed, and
 DOM writes are batched in `requestAnimationFrame`. Nothing runs in hidden tabs. Storage writes go through
-the service worker in batches of up to 2 seconds. The bundles are about 50 KB in total, minified.
+the service worker in batches of up to 2 seconds. The bundles are about 52 KB in total, minified.
 
 ## Development
 

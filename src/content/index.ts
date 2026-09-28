@@ -4,10 +4,11 @@
  * All writes go through the service worker so concurrent tabs can't clobber each other.
  */
 import type { ChannelSummary, SwRequest, TabRequest, TabResponse } from '../shared/messages';
-import { normalizeSettings, type Settings } from '../shared/settings';
+import { autoFeedbackOn, checksOn, normalizeSettings, youtubeOn, type Settings } from '../shared/settings';
 import { getChannels, getDontRecs, getOverrides, getSettings, getVmap, isChannelKey, KEY } from '../shared/storage';
 import type { ChannelRecord, DontRecs, Overrides, PageInfo, VerdictResult } from '../shared/types';
-import { resolveVerdict } from '../shared/verdict';
+import { resolveVerdict, withVideoLabel } from '../shared/verdict';
+import type { FeedbackKind } from '../shared/feedback';
 import { checkNeed } from '../shared/check';
 import { applyTile, canHostDontRec, clearTile, hasBadge, hasDontRecButton, setDontRecButton } from './badges';
 import { createChecker } from './checker';
@@ -141,7 +142,7 @@ const checker = createChecker({
   send,
   record: (cid) => channels.get(cid) ?? undefined,
   override: (cid) => overrides[cid],
-  active: () => alive() && settings.enabled && settings.backgroundChecks && document.visibilityState === 'visible',
+  active: () => alive() && checksOn(settings) && document.visibilityState === 'visible',
 });
 
 function onScreen(el: Element): boolean {
@@ -153,7 +154,7 @@ function onScreen(el: Element): boolean {
 // on, re-run the pass a couple of times a second so newly visible tiles get offered.
 let scrollTimer: ReturnType<typeof setTimeout> | undefined;
 function onScroll(): void {
-  if (!settings.backgroundChecks || scrollTimer !== undefined) return;
+  if (!checksOn(settings) || scrollTimer !== undefined) return;
   scrollTimer = setTimeout(() => {
     scrollTimer = undefined;
     schedulePass();
@@ -182,34 +183,42 @@ function onDontRecResult(e: Event): void {
 }
 document.addEventListener('botless:dont-recommend-result', onDontRecResult);
 
-function dontRecommend(videoId: string, channelId: string, auto: boolean): Promise<DontRecResult> {
+/**
+ * kind 'channel' = "Don't recommend channel" (remembered per channel, never repeated);
+ * kind 'video'   = "Not interested" (Shorts tiles only offer this; per video, YouTube drops the Short).
+ */
+function dontRecommend(videoId: string, channelId: string, auto: boolean, kind: FeedbackKind): Promise<DontRecResult> {
   return new Promise<DontRecResult>((resolve) => {
     dontRecWaiters.set(videoId, resolve);
     document.dispatchEvent(new CustomEvent('botless:dont-recommend', { detail: JSON.stringify({ videoId }) }));
     setTimeout(() => dontRecWaiters.delete(videoId) && resolve('menu'), 5000);
   }).then((r) => {
-    if (r === 'ok') void send({ type: 'dontRecommended', channelId, name: channels.get(channelId)?.name ?? undefined, auto });
+    if (r === 'ok' && kind === 'channel') {
+      void send({ type: 'dontRecommended', channelId, name: channels.get(channelId)?.name ?? undefined, auto });
+    }
     return r;
   });
 }
 
-async function onDontRecClick(button: HTMLButtonElement, videoId: string, channelId: string): Promise<void> {
+async function onDontRecClick(button: HTMLButtonElement, videoId: string, channelId: string, kind: FeedbackKind): Promise<void> {
   button.disabled = true;
   button.textContent = 'Telling YouTube…';
-  const r = await dontRecommend(videoId, channelId, false);
+  const r = await dontRecommend(videoId, channelId, false, kind);
   if (r === 'ok') return; // YouTube replaces the tile with its own "Undo" notice
   button.disabled = false;
   button.textContent = r === 'busy' ? 'Close the open menu, then retry' : "Couldn't do it — retry";
 }
 
-// Auto mode (opt-in): one channel at a time, a few seconds apart, never twice for the same channel.
-const autoQueue = new Map<string, string>(); // channelId -> videoId
+// Auto mode (opt-in): one at a time, a few seconds apart, never twice for the same channel (or Short).
+type AutoJob = { videoId: string; channelId: string; kind: FeedbackKind };
+const autoQueue = new Map<string, AutoJob>(); // "c:<channel>" or "v:<video>" -> job
 const autoTried = new Set<string>();
 let autoTimer: ReturnType<typeof setTimeout> | undefined;
 
-function offerAuto(videoId: string, channelId: string): void {
-  if (autoTried.has(channelId) || autoQueue.has(channelId)) return;
-  autoQueue.set(channelId, videoId);
+function offerAuto(videoId: string, channelId: string, kind: FeedbackKind): void {
+  const key = kind === 'channel' ? `c:${channelId}` : `v:${videoId}`;
+  if (autoTried.has(key) || autoQueue.has(key)) return;
+  autoQueue.set(key, { videoId, channelId, kind });
   kickAuto(1000);
 }
 
@@ -217,18 +226,18 @@ function kickAuto(delayMs: number): void {
   if (autoTimer !== undefined) return;
   autoTimer = setTimeout(async () => {
     autoTimer = undefined;
-    if (!alive() || !settings.enabled || !settings.autoDontRecommend || document.visibilityState !== 'visible') return;
+    if (!alive() || !autoFeedbackOn(settings) || document.visibilityState !== 'visible') return;
     const next = autoQueue.entries().next();
     if (next.done) return;
-    const [channelId, videoId] = next.value;
-    autoQueue.delete(channelId);
-    if (!dontrecs[channelId]) {
-      const r = await dontRecommend(videoId, channelId, true);
+    const [key, job] = next.value;
+    autoQueue.delete(key);
+    if (job.kind === 'video' || !dontrecs[job.channelId]) {
+      const r = await dontRecommend(job.videoId, job.channelId, true, job.kind);
       if (r === 'busy') {
-        autoQueue.set(channelId, videoId); // user is typing / has a menu open: try again later
+        autoQueue.set(key, job); // user is typing / has a menu open: try again later
         return kickAuto(5000);
       }
-      autoTried.add(channelId);
+      autoTried.add(key);
     }
     if (autoQueue.size) kickAuto(3000);
   }, delayMs);
@@ -243,27 +252,33 @@ function pass(): void {
     if (vid && cid && vmap[vid] !== cid) pendingPairs.set(vid, cid);
     cid ??= vid ? vmap[vid] : undefined;
     if (!settings.enabled || !cid || !el.dataset.botlessKey) {
+      // Channel-less tile (a Short): checking its video reveals both its channel and its AI label.
+      if (checksOn(settings) && vid && !cid && el.dataset.botlessKey && onScreen(el)) checker.offer(vid, null);
       if (el.dataset.botlessApplied) clearTile(el);
       continue;
     }
-    const result = verdictFor(cid);
-    if (!result) continue; // loading; the load callback schedules another pass
-    if (settings.backgroundChecks && vid && checkNeed(channels.get(cid) ?? undefined, overrides[cid]) && onScreen(el)) {
+    const channelResult = verdictFor(cid);
+    if (!channelResult) continue; // loading; the load callback schedules another pass
+    if (checksOn(settings) && vid && checkNeed(channels.get(cid) ?? undefined, overrides[cid]) && onScreen(el)) {
       checker.offer(vid, cid);
     }
+    // A video carrying YouTube's own AI label is AI content even if its channel isn't judged yet.
+    const result = withVideoLabel(channelResult, !!vid && channels.get(cid)?.videos[vid] === 1, overrides[cid]);
     const action = result.verdict ? settings.actions[result.verdict] : 'none';
     const needsBadge = action === 'badge' || action === 'fade';
-    // YouTube's own "Don't recommend channel": offered on Probably AI tiles where YouTube has it (signed in, feeds).
-    const canDontRec = result.verdict === 'ai' && !!vid && !!el.dataset.botlessDontrec && !dontrecs[cid];
+    // YouTube's own feedback: "Don't recommend channel" on video tiles, "Not interested" on Shorts (signed in, feeds).
+    const kind = el.dataset.botlessDontrec as FeedbackKind | undefined;
+    // Needs the "Connect to YouTube" gate: without it Botless never acts on the user's YouTube account.
+    const canDontRec = youtubeOn(settings) && result.verdict === 'ai' && !!vid && !!kind && (kind === 'video' || !dontrecs[cid]);
     const wantButton = canDontRec && needsBadge && canHostDontRec(el);
     // Hidden tiles are display:none (never "on screen"), but that is exactly when auto mode is most wanted.
-    if (canDontRec && settings.autoDontRecommend && (action === 'hide' || onScreen(el))) offerAuto(vid!, cid);
+    if (canDontRec && autoFeedbackOn(settings) && (action === 'hide' || onScreen(el))) offerAuto(vid!, cid, kind!);
     const sig = `${el.dataset.botlessKey}|${result.verdict}|${action}|${wantButton}|${gen}`;
     if (el.dataset.botlessApplied === sig && (!needsBadge || hasBadge(el)) && (!wantButton || hasDontRecButton(el))) continue;
     if (action === 'none') clearTile(el);
     else if (!applyTile(el, result, action)) continue; // thumbnail not rendered yet; retry next pass
     const tileCid = cid;
-    setDontRecButton(el, wantButton, (button) => void onDontRecClick(button, vid!, tileCid));
+    setDontRecButton(el, wantButton, kind ?? 'channel', (button) => void onDontRecClick(button, vid!, tileCid, kind!));
     el.dataset.botlessApplied = sig;
     if (result.verdict === 'ai') noteFlagged(vid);
   }
@@ -312,7 +327,8 @@ async function onPage(info: PageInfo): Promise<void> {
   }
   if (!summary || page !== info) return; // navigated away meanwhile
   channels.set(info.channelId, summary.record ?? null);
-  pageResult = summary.result;
+  // The video playing right now carries YouTube's AI label: AI for this video (auto-skips labeled Shorts too).
+  pageResult = withVideoLabel(summary.result, info.disclosure === 'ai', summary.override);
   gen++;
   schedulePass();
 
@@ -356,7 +372,8 @@ chrome.storage.onChanged.addListener((changes, area) => {
       settings = normalizeSettings(newValue);
       if (wasEnabled !== settings.enabled && page) void onPage(page);
       if (!settings.autoSkip || !settings.enabled) cancelSkip();
-      if (!settings.backgroundChecks || !settings.enabled) checker.stop();
+      if (!checksOn(settings)) checker.stop();
+      if (!autoFeedbackOn(settings)) autoQueue.clear();
       dirty = true;
     } else if (key === KEY.overrides) {
       overrides = (newValue as Overrides) ?? {};
@@ -385,8 +402,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 function refreshPill(): void {
   if (!page?.channelId) return;
-  const result = verdictFor(page.channelId);
-  if (!result) return;
+  const channelResult = verdictFor(page.channelId);
+  if (!channelResult) return;
+  const result = withVideoLabel(channelResult, page.disclosure === 'ai', overrides[page.channelId]);
   pageResult = result;
   renderOwnerBadge(page, result, pillVisible(result));
 }

@@ -22,11 +22,17 @@ export interface Settings {
   thresholds: Thresholds;
   actions: Record<Verdict, Action>;
   autoSkip: boolean;
-  /** Opt-in: look up YouTube's AI label for channels on screen before you watch (src/shared/check.ts). */
+  /**
+   * Master gate for everything that talks to YouTube beyond the page you're on (popup: "Connect to YouTube").
+   * Off (default): fully local, verdicts only come from what you watch, nothing is sent anywhere.
+   * On: enables the sub-features below (background checks, "Don't recommend" / "Not interested").
+   */
+  youtubeRequests: boolean;
+  /** Under the gate: look up YouTube's AI label for channels on screen before you watch (src/shared/check.ts). */
   backgroundChecks: boolean;
   /** Max background-check requests per day, across all tabs. No documented YouTube limit exists: 150 is a cautious default. */
   checkDailyLimit: number;
-  /** Opt-in: automatically use YouTube's "Don't recommend channel" on Probably AI channels (once per channel). */
+  /** Under the gate: automatically use "Don't recommend channel" / "Not interested" on Probably AI content. */
   autoDontRecommend: boolean;
   /** `next` uses the player's Next button (autoplay/playlist); `back` goes to the previous page. */
   skipTarget: 'next' | 'back';
@@ -50,7 +56,8 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   actions: { ai: 'badge', inconclusive: 'badge', human: 'none' },
   autoSkip: false,
-  backgroundChecks: false,
+  youtubeRequests: false,
+  backgroundChecks: true,
   checkDailyLimit: 150,
   autoDontRecommend: false,
   skipTarget: 'next',
@@ -93,7 +100,10 @@ export function normalizeSettings(raw: unknown): Settings {
       human: a.human === 'badge' ? 'badge' : 'none',
     },
     autoSkip: typeof r.autoSkip === 'boolean' ? r.autoSkip : d.autoSkip,
-    backgroundChecks: typeof r.backgroundChecks === 'boolean' ? r.backgroundChecks : d.backgroundChecks,
+    // Settings saved before the gate existed: the gate is on if a YouTube feature was on, and background checks
+    // (now just a sub-option) default to on so that flipping the gate later does what users expect.
+    youtubeRequests: typeof r.youtubeRequests === 'boolean' ? r.youtubeRequests : !!(r.backgroundChecks || r.autoDontRecommend),
+    backgroundChecks: r.youtubeRequests === undefined ? d.backgroundChecks : typeof r.backgroundChecks === 'boolean' ? r.backgroundChecks : d.backgroundChecks,
     checkDailyLimit: Math.round(clamp(r.checkDailyLimit, 10, 1000, d.checkDailyLimit)),
     autoDontRecommend: typeof r.autoDontRecommend === 'boolean' ? r.autoDontRecommend : d.autoDontRecommend,
     skipTarget: r.skipTarget === 'back' ? 'back' : 'next',
@@ -102,6 +112,11 @@ export function normalizeSettings(raw: unknown): Settings {
     observationTtlDays: clamp(r.observationTtlDays, 1, 3650, d.observationTtlDays),
   };
 }
+
+/** Effective switches: every YouTube-facing feature needs Botless on AND the "Connect to YouTube" gate. */
+export const youtubeOn = (s: Settings): boolean => s.enabled && s.youtubeRequests;
+export const checksOn = (s: Settings): boolean => youtubeOn(s) && s.backgroundChecks;
+export const autoFeedbackOn = (s: Settings): boolean => youtubeOn(s) && s.autoDontRecommend;
 
 /** Stable key for the threshold values; a cached verdict computed under other thresholds is stale. */
 export const thresholdsKey = (t: Thresholds): string =>

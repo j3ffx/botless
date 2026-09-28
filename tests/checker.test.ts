@@ -96,6 +96,15 @@ describe('background checker', () => {
     expect(records[CID]!.videos).toEqual({ ZneqyXsgpO4: 1, TCp_fT90F5s: 1 }); // 2 of 2 -> "Probably AI" by scoring
   });
 
+  it('checks a Short whose tile has no channel, learning its channel and label', async () => {
+    const { checker, records, sent, fetched } = setup({ labels: { ZneqyXsgpO4: true }, feed: [] });
+    checker.offer('ZneqyXsgpO4', null);
+    // Labeled -> it then reads the channel feed to confirm (empty here). Wait for that so it can't leak into other tests.
+    await until(() => fetched.includes('feed'));
+    expect(records[CID]!.videos).toEqual({ ZneqyXsgpO4: 1 }); // attributed to the channel from the response
+    expect(sent).toContainEqual({ type: 'learnVideos', pairs: [['ZneqyXsgpO4', CID]] }); // the tile can now be judged
+  });
+
   it('stops after one unlabeled video (no confirmation needed)', async () => {
     const { checker, records, fetched } = setup({ labels: {} });
     checker.offer('JsBZOcqZerk', CID);

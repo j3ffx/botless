@@ -47,3 +47,7 @@ details .btn { margin-top: 14px; }
   select { width: 100%; }
   .ov th:nth-child(3), .ov td:nth-child(3) { display: none; }
 }
+
+/* Options that only apply while "Connect to YouTube" is on. */
+.sub { margin-left: 4px; padding-left: 14px; border-left: 2px solid var(--border); }
+.sub.off { opacity: 0.5; }

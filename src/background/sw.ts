@@ -6,7 +6,7 @@
  */
 import { CHECK_BACKOFF_MS, CHECK_SPACING_MS } from '../shared/check';
 import type { ChannelSummary, CheckPermit, SwRequest } from '../shared/messages';
-import { DEFAULT_SETTINGS } from '../shared/settings';
+import { checksOn, DEFAULT_SETTINGS } from '../shared/settings';
 import {
   getChannels,
   getCheckStats,
@@ -133,7 +133,7 @@ let lastGrant = 0;
 
 async function checkPermit(): Promise<CheckPermit> {
   const settings = await getSettings();
-  if (!settings.enabled || !settings.backgroundChecks) return { ok: false, retryAfterMs: 60_000, reason: 'off' };
+  if (!checksOn(settings)) return { ok: false, retryAfterMs: 60_000, reason: 'off' };
   const now = Date.now();
   const stats = await getCheckStats();
   if (stats.backoffUntil && stats.backoffUntil > now) return { ok: false, retryAfterMs: stats.backoffUntil - now, reason: 'backoff' };

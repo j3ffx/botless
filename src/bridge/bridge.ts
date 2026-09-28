@@ -11,7 +11,7 @@
  *   3. When asked, picks YouTube's own "Don't recommend channel" in a tile's ⋮ menu (see the end of this file).
  */
 import { detectDisclosureInData, detectDisclosureInDom } from '../shared/disclosure';
-import { findDontRecommendItem } from '../shared/feedback';
+import { findFeedbackItem, type FeedbackKind } from '../shared/feedback';
 import {
   CHANNEL_ID_RE,
   channelIdFromChannelPage,
@@ -80,8 +80,10 @@ function stamp(el: AnyEl): boolean {
   const key = `${vid ?? ''}|${cid ?? ''}`;
   // A channel-less Shorts tile may gain a channel once the page info arrives, so keep retrying it.
   if (href && cid) el.dataset.botlessHref = href;
-  // Can Botless trigger YouTube's own "Don't recommend channel" for this tile? (signed in, feed tiles)
-  if (findDontRecommendItem(data)) el.dataset.botlessDontrec = '1';
+  // Which of YouTube's own feedback actions can Botless trigger here? (signed in, feed tiles)
+  //   'channel' = "Don't recommend channel" (video tiles); 'video' = "Not interested" (Shorts tiles have only this).
+  const kind: FeedbackKind | null = findFeedbackItem(data, 'channel') ? 'channel' : shortsTile && findFeedbackItem(data, 'video') ? 'video' : null;
+  if (kind) el.dataset.botlessDontrec = kind;
   else delete el.dataset.botlessDontrec;
   if (el.dataset.botlessKey === key) return false;
   if (vid) el.dataset.botlessVid = vid;
@@ -254,7 +256,8 @@ window.addEventListener('load', () => setTimeout(() => lastInfo?.url !== locatio
 // request itself and shows its own "Undo" notice. The menu is invisible (html.botless-quiet-menu) for the few
 // hundred milliseconds this takes.
 
-const MENU_BUTTON = '[class*="MenuButton"] button, ytd-menu-renderer yt-icon-button button, ytd-menu-renderer button';
+// Video tiles: .ytLockupMetadataViewModelMenuButton; Shorts tiles: .shortsLockupViewModelHostOutsideMetadataMenu.
+const MENU_BUTTON = '[class*="MenuButton"] button, [class*="MetadataMenu"] button, ytd-menu-renderer yt-icon-button button, ytd-menu-renderer button';
 const MENU_ITEMS = 'yt-list-item-view-model, ytd-menu-service-item-renderer, tp-yt-paper-item';
 type DontRecResult = 'ok' | 'unavailable' | 'busy' | 'menu';
 let dontRecBusy = false;
@@ -282,7 +285,8 @@ function userIsBusy(): boolean {
 
 async function dontRecommend(videoId: string): Promise<DontRecResult> {
   const tile = [...document.querySelectorAll<AnyEl>('[data-botless-dontrec]')].find((el) => el.dataset.botlessVid === videoId);
-  const item = tile ? findDontRecommendItem(rendererData(tile)) : null;
+  const kind = tile?.dataset.botlessDontrec as FeedbackKind | undefined;
+  const item = tile && kind ? findFeedbackItem(rendererData(tile), kind) : null;
   if (!tile || !item) return 'unavailable';
   if (userIsBusy()) return 'busy';
   const button = tile.querySelector<HTMLElement>(MENU_BUTTON);

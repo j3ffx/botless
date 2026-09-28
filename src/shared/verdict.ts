@@ -43,6 +43,20 @@ export function resolveVerdict(
   return { result: computeVerdict(scoringInput(record, undefined), settings.thresholds), stale: true };
 }
 
+/**
+ * A video that itself carries YouTube's official AI label is AI content, whatever its channel's verdict.
+ * Used for that video only (its tile, or the page while it plays) — the channel verdict is unchanged.
+ * The user's own mark still wins, as always.
+ */
+export function withVideoLabel(channelResult: VerdictResult, videoLabeled: boolean, override: Override | undefined): VerdictResult {
+  if (!videoLabeled || override || channelResult.verdict === 'ai') return channelResult;
+  return {
+    verdict: 'ai',
+    score: 1,
+    reasons: [{ signal: 'disclosure', text: "This video carries YouTube's AI label", weight: 1 }, ...channelResult.reasons],
+  };
+}
+
 export function withFreshCache(record: ChannelRecord, settings: Settings, now: number): ChannelRecord {
   const r = computeVerdict(scoringInput(record, undefined), settings.thresholds);
   return { ...record, cached: { ...r, computedAt: now, thresholdsKey: thresholdsKey(settings.thresholds) } };

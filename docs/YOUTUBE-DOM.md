@@ -220,3 +220,13 @@ We identify the item by `imageName: "REMOVE"` plus the presence of a `feedbackTo
 
 Dry-run results (menu opened invisibly, item found, closed without clicking) on three different tiles: the
 item was found within 50 ms each time and the menu closed cleanly.
+
+**Shorts tiles (signed in).** `ytm-shorts-lockup-view-model-v2` has `rawProps` keys `entityId`,
+`accessibilityText`, `onTap`, `inlinePlayerData` and `menuOnTap`. There is still **no channel ID** anywhere
+in the tile or its shelf (`ytd-rich-shelf-renderer`, 75 KB of data, zero `browseId`s). Its menu offers
+"Ajouter à la file d'attente" (`ADD_TO_QUEUE_TAIL`), **"Pas intéressé" (`HIDE`, feedbackEndpoint)**,
+"Envoyer des commentaires" (`FEEDBACK`) and "Signaler" (`FLAG`), but **no "Don't recommend channel"**. So
+for Shorts Botless uses "Not interested". The ⋮ button is
+`.shortsLockupViewModelHostOutsideMetadataMenu button`, and the button host is
+`.shortsLockupViewModelHostOutsideMetadataSubhead` (under the view count). A dry run (menu opened
+invisibly, "Pas intéressé" found, closed without clicking) succeeded.
