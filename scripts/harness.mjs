@@ -34,6 +34,7 @@ const shim = `
   window.chrome = {
     storage: { local, onChanged: ev(changeL) },
     runtime: {
+      id: 'botless-harness',
       onMessage: ev(msgL), onInstalled: ev([]), onStartup: ev([]),
       sendMessage(msg) {
         return new Promise((res) => {

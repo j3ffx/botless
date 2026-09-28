@@ -21,7 +21,44 @@ let gen = 0;
 let page: PageInfo | null = null;
 let pageResult: VerdictResult | null = null;
 
-const send = (msg: SwRequest) => chrome.runtime.sendMessage(msg).catch(() => undefined);
+// ---- Orphan detection ----
+// When the extension is reloaded or updated, this copy keeps running in tabs that were already open, but
+// every chrome.* call now throws "Extension context invalidated". Chrome doesn't re-inject into those tabs,
+// so the only sane thing is to remove our UI and go quiet until the user refreshes the page.
+
+let dead = false;
+function alive(): boolean {
+  if (dead) return false;
+  try {
+    if (chrome.runtime?.id) return true;
+  } catch {
+    /* context invalidated */
+  }
+  shutdown();
+  return false;
+}
+
+function shutdown(): void {
+  dead = true;
+  clearTimeout(flushTimer);
+  clearTimeout(loadTimer);
+  cancelSkip();
+  document.removeEventListener('botless:page', onPageEvent);
+  document.removeEventListener('botless:scan', schedulePass);
+  document.removeEventListener('yt-navigate-start', onNavigateStart);
+  document.querySelectorAll('.botless-badge, .botless-owner').forEach((el) => el.remove());
+  document.querySelectorAll('.botless-fade, .botless-hide').forEach((el) => el.classList.remove('botless-fade', 'botless-hide'));
+}
+
+function send(msg: SwRequest): Promise<any> {
+  if (!alive()) return Promise.resolve(undefined);
+  try {
+    return chrome.runtime.sendMessage(msg).catch(() => (alive(), undefined));
+  } catch {
+    shutdown();
+    return Promise.resolve(undefined);
+  }
+}
 
 // ---- Batched fire-and-forget messages ----
 
@@ -50,7 +87,14 @@ function loadMissing(): void {
     loadTimer = undefined;
     const ids = [...pendingLoads];
     pendingLoads.clear();
-    const got = await getChannels(ids);
+    if (!alive()) return;
+    let got: Awaited<ReturnType<typeof getChannels>>;
+    try {
+      got = await getChannels(ids);
+    } catch {
+      alive(); // shuts down if the extension went away; otherwise the next pass retries
+      return;
+    }
     for (const id of ids) channels.set(id, got[id] ?? null);
     schedulePass();
   }, 50);
@@ -81,6 +125,7 @@ function noteFlagged(vid: string | undefined): void {
 // ---- Tile pass (runs after each debounced bridge scan) ----
 
 function pass(): void {
+  if (!alive()) return;
   const tiles = document.querySelectorAll<HTMLElement>('[data-botless-key], [data-botless-applied]');
   for (const el of tiles) {
     const vid = el.dataset.botlessVid;
@@ -158,17 +203,21 @@ async function onPage(info: PageInfo): Promise<void> {
   }
 }
 
-document.addEventListener('botless:page', (e) => {
+function onPageEvent(e: Event): void {
   const detail = (e as CustomEvent<string>).detail;
-  if (typeof detail !== 'string') return;
+  if (typeof detail !== 'string' || !alive()) return;
   try {
     void onPage(JSON.parse(detail) as PageInfo);
   } catch {
     /* ignore malformed */
   }
-});
+}
+function onNavigateStart(): void {
+  cancelSkip();
+}
+document.addEventListener('botless:page', onPageEvent);
 document.addEventListener('botless:scan', schedulePass);
-document.addEventListener('yt-navigate-start', () => cancelSkip());
+document.addEventListener('yt-navigate-start', onNavigateStart);
 
 // ---- Popup queries ----
 
@@ -221,7 +270,12 @@ function refreshPill(): void {
 // ---- Boot ----
 
 void (async () => {
-  [settings, overrides, vmap] = await Promise.all([getSettings(), getOverrides(), getVmap()]);
+  try {
+    [settings, overrides, vmap] = await Promise.all([getSettings(), getOverrides(), getVmap()]);
+  } catch {
+    alive();
+    return;
+  }
   gen++;
   schedulePass();
   document.dispatchEvent(new CustomEvent('botless:request-page'));
