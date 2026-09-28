@@ -12,11 +12,18 @@ describe('normalizeSettings', () => {
     expect(s.checkDailyLimit).toBe(150);
   });
 
-  it('turning the gate on enables checks (sub-option on by default) but not automatic feedback', () => {
-    const s = normalizeSettings({ youtubeRequests: true });
+  it('turning Active mode on enables checks and automatic feedback (both on by default under the gate)', () => {
+    const s = normalizeSettings({ youtubeRequests: true, version: 2 });
     expect(checksOn(s)).toBe(true);
-    expect(autoFeedbackOn(s)).toBe(false);
+    expect(autoFeedbackOn(s)).toBe(true);
     expect(checksOn({ ...s, enabled: false })).toBe(false); // Botless off wins over everything
+    expect(autoFeedbackOn({ ...s, youtubeRequests: false })).toBe(false); // the gate wins over sub-options
+  });
+
+  it('keeps a deliberate "automatic off" from v2 on, but moves pre-v2 settings to the new default once', () => {
+    expect(normalizeSettings({ youtubeRequests: true, autoDontRecommend: false, version: 2 }).autoDontRecommend).toBe(false);
+    expect(normalizeSettings({ youtubeRequests: true, autoDontRecommend: false }).autoDontRecommend).toBe(true);
+    expect(normalizeSettings({}).version).toBe(2);
   });
 
   it('upgrades settings saved before the gate existed without changing behaviour', () => {

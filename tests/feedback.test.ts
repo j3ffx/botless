@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findDontRecommendItem, findFeedbackItem } from '../src/shared/feedback';
+import { findDontRecommendItem, findFeedbackItem, pickFeedbackKind } from '../src/shared/feedback';
 
 /** A ⋮ menu item as found in a signed-in home feed lockup (tokens shortened). */
 const item = (title: string, icon: string, feedback = true) => ({
@@ -70,6 +70,16 @@ describe('findDontRecommendItem', () => {
     };
     expect(findFeedbackItem(shortsMenu, 'video')).toEqual({ title: 'Pas intéressé' });
     expect(findFeedbackItem(shortsMenu, 'channel')).toBeNull();
+  });
+
+  it('never dismisses a whole channel because of one labeled video', () => {
+    // Video tile offering both actions:
+    expect(pickFeedbackKind('channel video', true, true)).toBe('channel'); // channel is Probably AI
+    expect(pickFeedbackKind('channel video', false, true)).toBe('video'); // only this video is (labeled)
+    expect(pickFeedbackKind('channel video', false, false)).toBeNull();
+    // Shorts tile: YouTube only offers "Not interested".
+    expect(pickFeedbackKind('video', true, true)).toBe('video');
+    expect(pickFeedbackKind(undefined, true, true)).toBeNull(); // signed out: nothing available
   });
 
   it('supports classic Polymer menus', () => {

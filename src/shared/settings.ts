@@ -32,7 +32,7 @@ export interface Settings {
   backgroundChecks: boolean;
   /** Max background-check requests per day, across all tabs. No documented YouTube limit exists: 150 is a cautious default. */
   checkDailyLimit: number;
-  /** Under the gate: automatically use "Don't recommend channel" / "Not interested" on Probably AI content. */
+  /** Under the gate (on by default): automatically use "Don't recommend channel" / "Not interested" on Probably AI content. */
   autoDontRecommend: boolean;
   /** `next` uses the player's Next button (autoplay/playlist); `back` goes to the previous page. */
   skipTarget: 'next' | 'back';
@@ -41,6 +41,8 @@ export interface Settings {
   cacheTtlDays: number;
   /** Channels not seen for this long are forgotten (overrides are never purged). */
   observationTtlDays: number;
+  /** Settings format version, for one-off migrations (see normalizeSettings). */
+  version: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -59,11 +61,12 @@ export const DEFAULT_SETTINGS: Settings = {
   youtubeRequests: false,
   backgroundChecks: true,
   checkDailyLimit: 150,
-  autoDontRecommend: false,
+  autoDontRecommend: true,
   skipTarget: 'next',
   skipDelaySeconds: 3,
   cacheTtlDays: 7,
   observationTtlDays: 180,
+  version: 2,
 };
 
 const ACTIONS: readonly Action[] = ['none', 'badge', 'fade', 'hide'];
@@ -105,11 +108,15 @@ export function normalizeSettings(raw: unknown): Settings {
     youtubeRequests: typeof r.youtubeRequests === 'boolean' ? r.youtubeRequests : !!(r.backgroundChecks || r.autoDontRecommend),
     backgroundChecks: r.youtubeRequests === undefined ? d.backgroundChecks : typeof r.backgroundChecks === 'boolean' ? r.backgroundChecks : d.backgroundChecks,
     checkDailyLimit: Math.round(clamp(r.checkDailyLimit, 10, 1000, d.checkDailyLimit)),
-    autoDontRecommend: typeof r.autoDontRecommend === 'boolean' ? r.autoDontRecommend : d.autoDontRecommend,
+    // v2: "Active mode" acts by itself by default. Settings saved before v2 stored the old default (false)
+    // without it being a real choice, so they move to the new default once.
+    autoDontRecommend: (typeof r.version === 'number' ? r.version : 1) < 2 ? d.autoDontRecommend
+      : typeof r.autoDontRecommend === 'boolean' ? r.autoDontRecommend : d.autoDontRecommend,
     skipTarget: r.skipTarget === 'back' ? 'back' : 'next',
     skipDelaySeconds: Math.round(clamp(r.skipDelaySeconds, 1, 15, d.skipDelaySeconds)),
     cacheTtlDays: clamp(r.cacheTtlDays, 0.01, 365, d.cacheTtlDays),
     observationTtlDays: clamp(r.observationTtlDays, 1, 3650, d.observationTtlDays),
+    version: d.version,
   };
 }
 

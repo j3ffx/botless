@@ -8,7 +8,7 @@ import { autoFeedbackOn, checksOn, normalizeSettings, youtubeOn, type Settings }
 import { getChannels, getDontRecs, getOverrides, getSettings, getVmap, isChannelKey, KEY } from '../shared/storage';
 import type { ChannelRecord, DontRecs, Overrides, PageInfo, VerdictResult } from '../shared/types';
 import { resolveVerdict, withVideoLabel } from '../shared/verdict';
-import type { FeedbackKind } from '../shared/feedback';
+import { pickFeedbackKind, type FeedbackKind } from '../shared/feedback';
 import { checkNeed } from '../shared/check';
 import { applyTile, canHostDontRec, clearTile, hasBadge, hasDontRecButton, setDontRecButton } from './badges';
 import { createChecker } from './checker';
@@ -190,10 +190,14 @@ document.addEventListener('botless:dont-recommend-result', onDontRecResult);
 function dontRecommend(videoId: string, channelId: string, auto: boolean, kind: FeedbackKind): Promise<DontRecResult> {
   return new Promise<DontRecResult>((resolve) => {
     dontRecWaiters.set(videoId, resolve);
-    document.dispatchEvent(new CustomEvent('botless:dont-recommend', { detail: JSON.stringify({ videoId }) }));
+    document.dispatchEvent(new CustomEvent('botless:dont-recommend', { detail: JSON.stringify({ videoId, kind }) }));
     setTimeout(() => dontRecWaiters.delete(videoId) && resolve('menu'), 5000);
   }).then((r) => {
     if (r === 'ok' && kind === 'channel') {
+      // YouTube replaced the clicked video with its "Undo" notice; hide the channel's other videos right away.
+      dismissedThisPage.set(channelId, videoId);
+      gen++;
+      schedulePass();
       void send({ type: 'dontRecommended', channelId, name: channels.get(channelId)?.name ?? undefined, auto });
     }
     return r;
@@ -211,6 +215,12 @@ async function onDontRecClick(button: HTMLButtonElement, videoId: string, channe
 
 // Auto mode (opt-in): one at a time, a few seconds apart, never twice for the same channel (or Short).
 type AutoJob = { videoId: string; channelId: string; kind: FeedbackKind };
+/**
+ * Channels told "Don't recommend" on this page -> the video that was clicked. Their other videos are hidden at
+ * once (YouTube only replaces the clicked one). The clicked video itself is exempt, so YouTube's Undo still
+ * brings it back. In-memory on purpose: future feeds won't contain the channel anyway.
+ */
+const dismissedThisPage = new Map<string, string>();
 const autoQueue = new Map<string, AutoJob>(); // "c:<channel>" or "v:<video>" -> job
 const autoTried = new Set<string>();
 let autoTimer: ReturnType<typeof setTimeout> | undefined;
@@ -264,10 +274,12 @@ function pass(): void {
     }
     // A video carrying YouTube's own AI label is AI content even if its channel isn't judged yet.
     const result = withVideoLabel(channelResult, !!vid && channels.get(cid)?.videos[vid] === 1, overrides[cid]);
-    const action = result.verdict ? settings.actions[result.verdict] : 'none';
+    const clicked = dismissedThisPage.get(cid);
+    const action = clicked !== undefined && clicked !== vid ? 'hide' : result.verdict ? settings.actions[result.verdict] : 'none';
     const needsBadge = action === 'badge' || action === 'fade';
-    // YouTube's own feedback: "Don't recommend channel" on video tiles, "Not interested" on Shorts (signed in, feeds).
-    const kind = el.dataset.botlessDontrec as FeedbackKind | undefined;
+    // YouTube's own feedback (signed in, feeds). The whole channel only when the CHANNEL is Probably AI; a single
+    // labeled video (or any Short, which has no channel option) only gets "Not interested".
+    const kind = pickFeedbackKind(el.dataset.botlessDontrec, channelResult.verdict === 'ai', result.verdict === 'ai') ?? undefined;
     // Needs the "Active mode" gate: without it Botless never acts on the user's YouTube account.
     const canDontRec = youtubeOn(settings) && result.verdict === 'ai' && !!vid && !!kind && (kind === 'video' || !dontrecs[cid]);
     const wantButton = canDontRec && needsBadge && canHostDontRec(el);

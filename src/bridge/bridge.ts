@@ -80,10 +80,10 @@ function stamp(el: AnyEl): boolean {
   const key = `${vid ?? ''}|${cid ?? ''}`;
   // A channel-less Shorts tile may gain a channel once the page info arrives, so keep retrying it.
   if (href && cid) el.dataset.botlessHref = href;
-  // Which of YouTube's own feedback actions can Botless trigger here? (signed in, feed tiles)
-  //   'channel' = "Don't recommend channel" (video tiles); 'video' = "Not interested" (Shorts tiles have only this).
-  const kind: FeedbackKind | null = findFeedbackItem(data, 'channel') ? 'channel' : shortsTile && findFeedbackItem(data, 'video') ? 'video' : null;
-  if (kind) el.dataset.botlessDontrec = kind;
+  // Which of YouTube's own feedback actions can Botless trigger here? (signed in, feed tiles) Space-separated:
+  //   'channel' = "Don't recommend channel" (video tiles only); 'video' = "Not interested" (video and Shorts tiles).
+  const kinds = (['channel', 'video'] as const).filter((k) => findFeedbackItem(data, k));
+  if (kinds.length) el.dataset.botlessDontrec = kinds.join(' ');
   else delete el.dataset.botlessDontrec;
   if (el.dataset.botlessKey === key) return false;
   if (vid) el.dataset.botlessVid = vid;
@@ -283,10 +283,9 @@ function userIsBusy(): boolean {
   );
 }
 
-async function dontRecommend(videoId: string): Promise<DontRecResult> {
+async function dontRecommend(videoId: string, kind: FeedbackKind): Promise<DontRecResult> {
   const tile = [...document.querySelectorAll<AnyEl>('[data-botless-dontrec]')].find((el) => el.dataset.botlessVid === videoId);
-  const kind = tile?.dataset.botlessDontrec as FeedbackKind | undefined;
-  const item = tile && kind ? findFeedbackItem(rendererData(tile), kind) : null;
+  const item = tile ? findFeedbackItem(rendererData(tile), kind) : null;
   if (!tile || !item) return 'unavailable';
   if (userIsBusy()) return 'busy';
   const button = tile.querySelector<HTMLElement>(MENU_BUTTON);
@@ -318,13 +317,14 @@ async function dontRecommend(videoId: string): Promise<DontRecResult> {
 
 document.addEventListener('botless:dont-recommend', (e) => {
   let videoId: unknown;
+  let kind: unknown;
   try {
-    videoId = JSON.parse(String((e as CustomEvent).detail)).videoId;
+    ({ videoId, kind } = JSON.parse(String((e as CustomEvent).detail)));
   } catch {
     return;
   }
-  if (typeof videoId !== 'string') return;
-  void dontRecommend(videoId).then((result) =>
+  if (typeof videoId !== 'string' || (kind !== 'channel' && kind !== 'video')) return;
+  void dontRecommend(videoId, kind).then((result) =>
     document.dispatchEvent(new CustomEvent('botless:dont-recommend-result', { detail: JSON.stringify({ videoId, result }) })),
   );
 });

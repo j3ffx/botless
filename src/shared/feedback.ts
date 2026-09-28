@@ -63,5 +63,17 @@ export function findFeedbackItem(root: unknown, kind: FeedbackKind, maxNodes = 5
   return null;
 }
 
+/**
+ * Which action fits a tile. `available` is the bridge's space-separated list for that tile ("channel video").
+ * "Don't recommend channel" only when the channel itself is Probably AI — never because of one labeled video.
+ * Otherwise, if this video is Probably AI (e.g. it carries the label), "Not interested" in just this video.
+ */
+export function pickFeedbackKind(available: string | undefined, channelIsAi: boolean, videoIsAi: boolean): FeedbackKind | null {
+  const kinds = new Set((available ?? '').split(' '));
+  if (channelIsAi && kinds.has('channel')) return 'channel';
+  if (videoIsAi && kinds.has('video')) return 'video';
+  return null;
+}
+
 /** "Don't recommend channel" (video tiles). */
 export const findDontRecommendItem = (root: unknown): FeedbackItem | null => findFeedbackItem(root, 'channel');

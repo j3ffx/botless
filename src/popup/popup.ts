@@ -75,9 +75,11 @@ async function refreshYoutube(): Promise<void> {
   const [settings, stats] = await Promise.all([getSettings(), getCheckStats()]);
   const el = $('youtube-status');
   if (!settings.youtubeRequests) return void (el.textContent = OFF_HINT);
-  const parts = ['On: checks channels on screen and can tell YouTube to stop recommending AI.'];
-  if (!settings.backgroundChecks) parts[0] = 'On: can tell YouTube to stop recommending AI. Checks are off in Settings.';
-  else if (stats.backoffUntil && stats.backoffUntil > Date.now()) parts.push('Checks paused: YouTube asked to slow down.');
+  const tells = settings.autoDontRecommend ? 'tells YouTube to stop recommending AI' : 'adds "Don\'t recommend" buttons';
+  const parts = [settings.backgroundChecks ? `On: checks channels on screen and ${tells}.` : `On: ${tells}. Checks are off in Settings.`];
+  if (!settings.backgroundChecks) {
+    /* no check usage to show */
+  } else if (stats.backoffUntil && stats.backoffUntil > Date.now()) parts.push('Checks paused: YouTube asked to slow down.');
   else if (stats.count >= settings.checkDailyLimit) parts.push(`Daily limit reached (${settings.checkDailyLimit}).`);
   else parts.push(`${stats.count} of ${settings.checkDailyLimit} checks today.`);
   el.textContent = parts.join(' ');

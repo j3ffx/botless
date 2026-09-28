@@ -69,7 +69,7 @@ page you're on:
 | Feature | What it does | Fine-tuning (Settings → Active mode) |
 |---|---|---|
 | **Background checks** | Looks up the AI label for videos on your screen, including Shorts | on by default under the gate; daily limit |
-| **"Don't recommend channel" / "Not interested"** | Buttons under *Probably AI* videos and Shorts that use YouTube's own feedback actions | automatic mode, off by default |
+| **"Don't recommend channel" / "Not interested"** | Uses YouTube's own feedback actions on *Probably AI* videos and Shorts, then hides that channel's other videos on the page | automatic by default; turn automatic off to get buttons instead |
 
 Turn it off and Botless goes back to being fully local: it's less informed, but it doesn't talk to anyone.
 
@@ -111,13 +111,15 @@ Code: [`src/content/checker.ts`](src/content/checker.ts) (scheduling),
   is paused and a toast ("Skipping likely-AI video — Undo") counts down 3 seconds (configurable). Then it
   goes to the next video (or back, per your setting). **Undo** resumes playback and won't skip that
   video again in this tab.
-- **"Don't recommend channel" / "Not interested"** (needs Active mode; signed in): *Probably AI*
-  videos in your home and recommendation feeds get a **Don't recommend channel** button under the
-  views/date line. *Probably AI* Shorts get **Not interested**, the only option YouTube offers for Shorts.
-  These are YouTube's own actions, so your **recommendations change on every device, including the
-  YouTube app**, and YouTube shows its usual **Undo**. An automatic mode (off by default, in Settings)
-  does it for you, a few seconds apart, and never twice for the same channel (so pressing YouTube's Undo
-  sticks). See [How "Don't recommend" works](#how-dont-recommend-works).
+- **"Don't recommend channel" / "Not interested"** (needs Active mode; signed in): Botless
+  automatically tells YouTube **Don't recommend channel** for *Probably AI* videos in your home and
+  recommendation feeds, and **Not interested** for *Probably AI* Shorts (the only option YouTube offers
+  there). It works one at a time, a few seconds apart, and never twice for the same channel, so pressing
+  YouTube's Undo sticks. These are YouTube's own actions, so your **recommendations change on every
+  device, including the YouTube app**. YouTube replaces the video with its usual **Undo** notice, and
+  Botless immediately hides that channel's other videos on the page. If you turn automatic off in
+  Settings, you get a button under each *Probably AI* video instead. See
+  [How "Don't recommend" works](#how-dont-recommend-works).
 - **Popup:** exactly two switches (Botless on/off, Active mode, with today's check usage), today's
   count of flagged videos, the current channel's verdict and the reasons behind it, and Mark as AI / Mark
   as human. The community vote buttons are shown but disabled until phase 2.
@@ -156,6 +158,10 @@ it does exactly what you would do. It opens the tile's ⋮ menu (kept invisible 
 second) and picks the item by its icon: `REMOVE` is "Don't recommend channel", and `HIDE` is "Not
 interested" (used for Shorts, which don't offer the channel option). Matching on the icon works in any
 language. YouTube then sends the request with its own sign-in and shows its own Undo notice.
+
+**Channel or just this video?** "Don't recommend channel" is used only when the *channel* is Probably AI.
+When only one video is AI (it carries YouTube's label but its channel isn't judged AI), Botless uses "Not
+interested" on that video instead, so a mostly-human creator is never dismissed because of one AI video.
 
 It never runs while you're typing, while a menu is open, or in a background tab. It only exists where
 YouTube offers the item: signed in, mostly on the home and recommendation feeds (not in search results).

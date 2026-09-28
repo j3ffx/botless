@@ -75,7 +75,7 @@ const META = [
 
 const BUTTON_TEXT: Record<FeedbackKind, { label: string; title: string }> = {
   channel: { label: "Don't recommend channel", title: 'Botless: tell YouTube not to recommend this channel anymore. YouTube shows an Undo.' },
-  video: { label: 'Not interested', title: "Botless: tell YouTube you're not interested in this AI Short. YouTube shows an Undo." },
+  video: { label: 'Not interested', title: "Botless: tell YouTube you're not interested in this AI video. YouTube shows an Undo." },
 };
 
 export const hasDontRecButton = (el: Element): boolean => !!el.querySelector(':scope .botless-dontrec');
