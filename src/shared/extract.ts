@@ -77,6 +77,29 @@ export function videoIdFromHref(href: string | null | undefined): string | null 
   return m ? m[1]! : null;
 }
 
+/**
+ * The one channel a shelf is about, or null if it mentions zero or several channels.
+ * Used to attribute channel-less Shorts tiles in search ("Latest Shorts from X" follows "Latest from X").
+ */
+export function soleChannel(root: unknown, maxNodes = 20_000): { id: string; name?: string } | null {
+  const ids = new Set<string>();
+  let name: string | undefined;
+  const stack: unknown[] = [root];
+  let seen = 0;
+  while (stack.length && seen++ < maxNodes) {
+    const node = stack.pop();
+    if (!isObj(node)) continue;
+    const be = node.browseEndpoint;
+    if (isObj(be) && typeof be.browseId === 'string' && CHANNEL_ID_RE.test(be.browseId)) ids.add(be.browseId);
+    // Byline runs look like { text: "Channel", navigationEndpoint: { browseEndpoint: { browseId: "UC…" } } }
+    const nav = node.navigationEndpoint;
+    const navBe = isObj(nav) ? nav.browseEndpoint : undefined;
+    if (!name && typeof node.text === 'string' && isObj(navBe) && CHANNEL_ID_RE.test(String(navBe.browseId))) name = node.text;
+    for (const v of Array.isArray(node) ? node : Object.values(node)) if (isObj(v)) stack.push(v);
+  }
+  return ids.size === 1 ? { id: [...ids][0]!, name } : null;
+}
+
 export function channelIdFromChannelPage(response: unknown): string | null {
   if (!isObj(response)) return null;
   const meta = isObj(response.metadata) ? response.metadata.channelMetadataRenderer : undefined;

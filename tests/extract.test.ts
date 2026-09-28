@@ -3,6 +3,7 @@ import {
   channelIdFromChannelPage,
   channelIdFromRendererData,
   findChannelBrowseId,
+  soleChannel,
   videoIdFromHref,
   videoIdFromRendererData,
 } from '../src/shared/extract';
@@ -28,6 +29,27 @@ describe('channel ID extraction', () => {
   it('rejects non-channel browse IDs (playlists, FE pages)', () => {
     expect(findChannelBrowseId({ browseEndpoint: { browseId: 'VLPL1234567890123456789012' } })).toBeNull();
     expect(findChannelBrowseId({ browseEndpoint: { browseId: 'FEwhat_to_watch' } })).toBeNull();
+  });
+
+  it('finds the one channel a shelf is about ("Latest from X" in search)', () => {
+    const run = (id: string, text: string) => ({ text, navigationEndpoint: { browseEndpoint: { browseId: id } } });
+    const shelf = (...owners: [string, string][]) => ({
+      title: { runs: [{ text: 'Latest from We R Cinephiles' }] },
+      content: {
+        verticalListRenderer: {
+          items: owners.map(([id, name]) => ({
+            videoRenderer: { videoId: 'abcdefghijk', ownerText: { runs: [run(id, name)] }, longBylineText: { runs: [run(id, name)] } },
+          })),
+        },
+      },
+    });
+    const CIN = 'UCZy_1WNgqZXMqrYeKoX-n1A';
+    expect(soleChannel(shelf([CIN, 'We R Cinephiles'], [CIN, 'We R Cinephiles']))).toEqual({ id: CIN, name: 'We R Cinephiles' });
+    expect(soleChannel(shelf([CIN, 'We R Cinephiles'], [VERITASIUM, 'Veritasium']))).toBeNull(); // mixed shelf
+    expect(soleChannel({})).toBeNull();
+    // The name must come from a link to the channel, not e.g. a hashtag link that happens to come first.
+    const withHashtag = { a: { text: '#music', navigationEndpoint: { browseEndpoint: { browseId: 'FEhashtag' } } }, b: shelf([CIN, 'We R Cinephiles']) };
+    expect(soleChannel(withHashtag)?.name).toBe('We R Cinephiles');
   });
 
   it('reads the channel page metadata', () => {

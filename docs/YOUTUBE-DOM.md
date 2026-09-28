@@ -117,10 +117,17 @@ Notes:
 - **Don't regex for `UC[\w-]{22}` over renderer JSON.** On a Shorts shelf this matched
   `UChgCIhMIg_CDmIKRlwMVWiS`, which is part of a base64 tracking param. Only `browseEndpoint.browseId` is
   trusted.
-- Shorts shelf tiles are badged only when the video → channel pair has been seen elsewhere (a watch page,
-  or a regular tile for the same video). These pairs go into a local map (`vmap`, 3000 entries max).
-  Otherwise the tile stays unbadged. Fetching each Short's page would fix this but costs one request per
-  tile, so we don't.
+- Shorts tiles get a channel in three cases (`contextChannelId` in `bridge.ts`):
+  1. **On a channel's own page** (Home, Shorts tab): the page's `externalId`.
+  2. **In search, "Latest Shorts from X"** (a `grid-shelf-view-model`): its previous sibling is X's
+     `ytd-shelf-renderer` "Latest from X". We accept it only if that shelf mentions exactly one channel ID
+     and the Shorts shelf title contains that channel's name. Verified 2026-09-28. Generic "Shorts"
+     shelves (mixed channels) correctly get nothing.
+  3. **Video already seen elsewhere**: the video → channel pair is in the local map (`vmap`, 3000 entries
+     max).
+
+  Otherwise the tile stays unbadged. Fetching each Short's page would fix that, but it costs one request
+  per tile, so we don't.
 - YouTube **recycles** tile elements while scrolling: the same element gets new data and a new `href`.
   The bridge re-stamps an element whenever its first watch/shorts link `href` changes.
 - `meta[itemprop="channelId"]` was absent on the SPA watch page.
@@ -136,7 +143,7 @@ Notes:
 | Watch page channel name | `ytd-watch-metadata ytd-video-owner-renderer #channel-name` |
 | Shorts channel bar | `ytd-shorts yt-reel-channel-bar-view-model` (inside `ytd-reel-video-renderer`) |
 | Dark theme | `html[dark]` attribute (also `is-dark-theme` on `ytd-watch-flexy`) |
-| Next video | `#movie_player .ytp-next-button`. Not usable in some logged-out layouts, where the fallback is `history.back()`. |
+| Next video | `#movie_player .ytp-next-button`. Hidden (`display:none`) in small player layouts, but `click()` still works, so we use it whenever its `href` points at a video. Otherwise the fallback is `history.back()`. |
 | Next Short | `#navigation-button-down button` |
 
 Hidden tabs: YouTube skips rendering the Shorts overlay, and `requestAnimationFrame` doesn't fire. The

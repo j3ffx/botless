@@ -175,7 +175,7 @@ Dev-only helpers (not shipped):
 
 - Desktop `www.youtube.com` only (not `m.youtube.com`, not YouTube Music).
 - Verdicts reflect what you have watched. That is local and private, but it starts empty.
-- Shorts shelf tiles have no channel data, so they are badged only for video IDs already seen elsewhere.
+- Shorts tiles carry no channel data. They are badged on the channel's own page, in search "Latest Shorts from X" shelves, or when the video was already seen elsewhere. Mixed Shorts shelves stay unbadged.
 - Localized disclosure text hasn't been verified. The language-independent article-ID match is the
   primary check.
 - YouTube markup changes. All selectors are listed in `docs/YOUTUBE-DOM.md` and kept in a few constants

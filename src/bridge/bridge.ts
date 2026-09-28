@@ -15,6 +15,7 @@ import {
   channelIdFromChannelPage,
   channelIdFromRendererData,
   channelNameFromChannelPage,
+  soleChannel,
   videoIdFromHref,
   videoIdFromRendererData,
 } from '../shared/extract';
@@ -60,8 +61,8 @@ function stamp(el: AnyEl): boolean {
 
   const data = rendererData(el);
   const vid = videoIdFromRendererData(data) ?? videoIdFromHref(href);
-  const cid = channelIdFromRendererData(data);
   const shortsTile = SHORTS_TILE.test(el.tagName);
+  const cid = channelIdFromRendererData(data) ?? (shortsTile ? contextChannelId(el) : null);
   // Classic tiles sometimes get their data a tick after their href: drop any stale stamp from the
   // element's previous video and retry on a later pass (botlessHref stays unset so we come back).
   if ((!vid && !cid) || (!cid && !shortsTile)) {
@@ -75,7 +76,8 @@ function stamp(el: AnyEl): boolean {
   }
 
   const key = `${vid ?? ''}|${cid ?? ''}`;
-  if (href) el.dataset.botlessHref = href;
+  // A channel-less Shorts tile may gain a channel once the page info arrives, so keep retrying it.
+  if (href && cid) el.dataset.botlessHref = href;
   if (el.dataset.botlessKey === key) return false;
   if (vid) el.dataset.botlessVid = vid;
   else delete el.dataset.botlessVid;
@@ -83,6 +85,34 @@ function stamp(el: AnyEl): boolean {
   else delete el.dataset.botlessCid;
   el.dataset.botlessKey = key;
   return true;
+}
+
+/**
+ * Shorts tiles carry no channel data (docs/YOUTUBE-DOM.md §2). Infer it only where the context is unambiguous:
+ *  1. On a channel's own page, every Shorts tile belongs to that channel.
+ *  2. In search, a "Latest Shorts from X" shelf directly follows X's "Latest from X" shelf; accept it when
+ *     that shelf is about exactly one channel and the Shorts shelf's title contains the channel's name.
+ */
+// Channel-less Shorts tiles are retried on every scan, so never walk the same shelf data twice.
+// Keyed by the data object itself: when YouTube swaps a shelf's data, the old entry is simply unreachable.
+const soleCache = new WeakMap<object, ReturnType<typeof soleChannel>>();
+function soleChannelCached(data: unknown): ReturnType<typeof soleChannel> {
+  if (!data || typeof data !== 'object') return null;
+  if (!soleCache.has(data)) soleCache.set(data, soleChannel(data));
+  return soleCache.get(data)!;
+}
+
+function contextChannelId(el: Element): string | null {
+  if (lastInfo?.pageType === 'channel' && lastInfo.channelId && lastInfo.url === location.href && el.closest('ytd-browse')) {
+    return lastInfo.channelId;
+  }
+  const shelf = el.closest('grid-shelf-view-model');
+  const prev = shelf?.previousElementSibling as AnyEl | null | undefined;
+  if (!shelf || prev?.tagName !== 'YTD-SHELF-RENDERER') return null;
+  const sole = soleChannelCached(rendererData(prev));
+  if (!sole?.name) return null;
+  const title = shelf.querySelector('yt-shelf-header-layout, yt-section-header-view-model, h2')?.textContent ?? '';
+  return title.toLowerCase().includes(sole.name.toLowerCase()) ? sole.id : null;
 }
 
 function scan(): void {
@@ -162,6 +192,7 @@ let domRetry: ReturnType<typeof setTimeout> | undefined;
 function emit(info: PageInfo): void {
   lastInfo = info;
   document.dispatchEvent(new CustomEvent('botless:page', { detail: JSON.stringify(info) }));
+  if (info.pageType === 'channel') schedule(); // Shorts tiles can now be attributed to this channel
 }
 
 function readPage(detail?: { response?: NavData }): void {
