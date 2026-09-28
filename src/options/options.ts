@@ -30,7 +30,7 @@ function fillForm(): void {
     if (el instanceof HTMLInputElement && el.type === 'checkbox') el.checked = !!v;
     else el.value = typeof v === 'number' ? String(Math.round(v * scale * 1000) / 1000) : String(v);
   }
-  // The YouTube sub-options only apply while the "Connect to YouTube" gate is on.
+  // The YouTube sub-options only apply while the "Active mode" gate is on.
   const sub = document.getElementById('youtube-sub');
   sub?.classList.toggle('off', !settings.youtubeRequests);
   sub?.querySelectorAll<HTMLInputElement>('input').forEach((i) => (i.disabled = !settings.youtubeRequests));

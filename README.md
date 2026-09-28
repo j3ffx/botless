@@ -5,7 +5,7 @@ A Manifest V3 Chrome extension that judges each **channel** as **Probably Human*
 counterpart of SkipIfFake.
 
 Phase 1 runs **on your device**. It has no analytics and no servers. The popup has two switches:
-**Botless on/off**, and **[Connect to YouTube](#connect-to-youtube-opt-in)**. The second one is off by
+**Botless on/off**, and **[Active mode](#active-mode-opt-in)**. The second one is off by
 default. While it's off, Botless is fully local and makes no requests of its own; it learns only from
 what you watch.
 
@@ -54,19 +54,19 @@ full findings, with real data samples, are in [`docs/YOUTUBE-DOM.md`](docs/YOUTU
 
 The label appears on the watch page, not on thumbnails. A channel's ratio therefore builds up from the
 videos **you** watch. A brand-new channel shows nothing until you've watched at least one of its videos,
-or until you mark it yourself. Turn on **Connect to YouTube** to fill this gap sooner.
+or until you mark it yourself. Turn on **Active mode** to fill this gap sooner.
 
 **A labeled video is AI content, even if its channel isn't judged yet.** When a video itself carries
 YouTube's AI label, that one video is treated as *Probably AI*: badge, fade or hide on its tile, and
 auto-skip when it plays. This matters most for Shorts. The channel's verdict isn't changed by one video,
 and your own "human" mark on a channel still wins.
 
-## Connect to YouTube (opt-in)
+## Active mode (opt-in)
 
 This is the second switch in the popup, off by default. It gates everything that goes beyond reading the
 page you're on:
 
-| Feature | What it does | Fine-tuning (Settings → Connect to YouTube) |
+| Feature | What it does | Fine-tuning (Settings → Active mode) |
 |---|---|---|
 | **Background checks** | Looks up the AI label for videos on your screen, including Shorts | on by default under the gate; daily limit |
 | **"Don't recommend channel" / "Not interested"** | Buttons under *Probably AI* videos and Shorts that use YouTube's own feedback actions | automatic mode, off by default |
@@ -111,17 +111,17 @@ Code: [`src/content/checker.ts`](src/content/checker.ts) (scheduling),
   is paused and a toast ("Skipping likely-AI video — Undo") counts down 3 seconds (configurable). Then it
   goes to the next video (or back, per your setting). **Undo** resumes playback and won't skip that
   video again in this tab.
-- **"Don't recommend channel" / "Not interested"** (needs Connect to YouTube; signed in): *Probably AI*
+- **"Don't recommend channel" / "Not interested"** (needs Active mode; signed in): *Probably AI*
   videos in your home and recommendation feeds get a **Don't recommend channel** button under the
   views/date line. *Probably AI* Shorts get **Not interested**, the only option YouTube offers for Shorts.
   These are YouTube's own actions, so your **recommendations change on every device, including the
   YouTube app**, and YouTube shows its usual **Undo**. An automatic mode (off by default, in Settings)
   does it for you, a few seconds apart, and never twice for the same channel (so pressing YouTube's Undo
   sticks). See [How "Don't recommend" works](#how-dont-recommend-works).
-- **Popup:** exactly two switches (Botless on/off, Connect to YouTube, with today's check usage), today's
+- **Popup:** exactly two switches (Botless on/off, Active mode, with today's check usage), today's
   count of flagged videos, the current channel's verdict and the reasons behind it, and Mark as AI / Mark
   as human. The community vote buttons are shown but disabled until phase 2.
-- **Options:** general (auto-skip), Connect to YouTube (background checks, daily limit, automatic
+- **Options:** general (auto-skip), Active mode (background checks, daily limit, automatic
   feedback; greyed out while the gate is off), actions, thresholds, cache lifetimes, the list of channels
   you marked (with Remove), and JSON export/import. Imports are validated field by field.
 - Works with YouTube's light and dark themes (`html[dark]`). The popup and options pages follow
@@ -132,7 +132,7 @@ Code: [`src/content/checker.ts`](src/content/checker.ts) (scheduling),
 | Permission | Why |
 |---|---|
 | `storage` | Saves settings, your marks, per-channel observations and the verdict cache in `chrome.storage.local`, on your device only. |
-| `host_permissions: https://www.youtube.com/*` | Runs the content scripts on YouTube, and lets the popup see that the active tab is a YouTube page so it can ask that tab which channel is showing. With Connect to YouTube on, it is also the only host Botless's own requests go to. |
+| `host_permissions: https://www.youtube.com/*` | Runs the content scripts on YouTube, and lets the popup see that the active tab is a YouTube page so it can ask that tab which channel is showing. With Active mode on, it is also the only host Botless's own requests go to. |
 
 That is all. No `tabs`, `scripting`, `webRequest`, `downloads`, `alarms` or other permissions. Export
 uses a normal `<a download>` link. Old channels are purged when the browser starts, so `alarms` isn't
@@ -165,7 +165,7 @@ Channels already done are listed under `dontrec` in storage, so Botless never re
 ## Privacy
 
 - By default Botless makes **no network requests** of its own. The only `fetch` calls are in
-  `src/content/checker.ts`, and they run only while **Connect to YouTube** is on. They go to
+  `src/content/checker.ts`, and they run only while **Active mode** is on. They go to
   `www.youtube.com` only, without cookies. There is no remote code and no analytics. You can check with
   `grep -rnE "fetch\(|XMLHttpRequest|WebSocket" src/`.
 - Everything is stored in `chrome.storage.local`:

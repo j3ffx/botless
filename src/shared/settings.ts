@@ -23,7 +23,7 @@ export interface Settings {
   actions: Record<Verdict, Action>;
   autoSkip: boolean;
   /**
-   * Master gate for everything that talks to YouTube beyond the page you're on (popup: "Connect to YouTube").
+   * Master gate for everything that talks to YouTube beyond the page you're on (popup: "Active mode").
    * Off (default): fully local, verdicts only come from what you watch, nothing is sent anywhere.
    * On: enables the sub-features below (background checks, "Don't recommend" / "Not interested").
    */
@@ -113,7 +113,7 @@ export function normalizeSettings(raw: unknown): Settings {
   };
 }
 
-/** Effective switches: every YouTube-facing feature needs Botless on AND the "Connect to YouTube" gate. */
+/** Effective switches: every YouTube-facing feature needs Botless on AND the "Active mode" gate. */
 export const youtubeOn = (s: Settings): boolean => s.enabled && s.youtubeRequests;
 export const checksOn = (s: Settings): boolean => youtubeOn(s) && s.backgroundChecks;
 export const autoFeedbackOn = (s: Settings): boolean => youtubeOn(s) && s.autoDontRecommend;

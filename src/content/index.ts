@@ -268,7 +268,7 @@ function pass(): void {
     const needsBadge = action === 'badge' || action === 'fade';
     // YouTube's own feedback: "Don't recommend channel" on video tiles, "Not interested" on Shorts (signed in, feeds).
     const kind = el.dataset.botlessDontrec as FeedbackKind | undefined;
-    // Needs the "Connect to YouTube" gate: without it Botless never acts on the user's YouTube account.
+    // Needs the "Active mode" gate: without it Botless never acts on the user's YouTube account.
     const canDontRec = youtubeOn(settings) && result.verdict === 'ai' && !!vid && !!kind && (kind === 'video' || !dontrecs[cid]);
     const wantButton = canDontRec && needsBadge && canHostDontRec(el);
     // Hidden tiles are display:none (never "on screen"), but that is exactly when auto mode is most wanted.
