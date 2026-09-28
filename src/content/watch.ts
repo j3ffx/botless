@@ -53,7 +53,9 @@ function doSkip(page: PageInfo, settings: Settings): void {
   }
   if (settings.skipTarget === 'next') {
     const next = document.querySelector<HTMLAnchorElement>('#movie_player .ytp-next-button');
-    const usable = next && next.getAttribute('aria-disabled') !== 'true' && getComputedStyle(next).display !== 'none';
+    // YouTube hides this button (display:none) in small player layouts, but click() still navigates.
+    // What matters is whether it points at a video.
+    const usable = next && next.getAttribute('aria-disabled') !== 'true' && /[?&]v=/.test(next.getAttribute('href') ?? '');
     if (usable) return next.click();
   }
   if (history.length > 1) history.back();
