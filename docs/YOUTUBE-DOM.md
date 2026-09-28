@@ -1,0 +1,163 @@
+# YouTube DOM & data findings
+
+Inspected live on **2026-09-28**, desktop `www.youtube.com`, logged out, English UI. YouTube changes its
+markup often. When something breaks, re-check the items below first. Every selector and data path the
+extension relies on is listed here.
+
+## 1. Official AI disclosure
+
+### Where it lives
+
+The disclosure is a section inside the video's **structured description**. It is present in the watch
+response for both regular videos and Shorts.
+
+```
+response.engagementPanels[i]
+  .engagementPanelSectionListRenderer.content
+  .structuredDescriptionContentRenderer.items[j]
+  .howThisWasMadeSectionViewModel
+```
+
+A real example (video `ZneqyXsgpO4`, tracking params removed):
+
+```json
+{
+  "sectionTitle": { "content": "How this was made" },
+  "bodyHeader":   { "content": "Made with AI" },
+  "bodyText": {
+    "content": "Sounds or visuals were altered or fully generated. Learn more",
+    "commandRuns": [{ "onTap": { "innertubeCommand": { "urlEndpoint": {
+      "url": "//support.google.com/youtube/answer/15447836?hl=en" } } } }]
+  }
+}
+```
+
+Rendered DOM:
+
+```html
+<how-this-was-made-section-view-model class="ytwHowThisWasMadeSectionViewModelHost">
+  <div class="ytwHowThisWasMadeSectionViewModelSectionTitle">How this was made</div>
+  <div class="ytwHowThisWasMadeSectionViewModelBodyHeader">Made with AI</div>
+  <div class="ytwHowThisWasMadeSectionViewModelBodyText">… <a href="https://support.google.com/youtube/answer/15447836?hl=en">Learn more</a></div>
+</how-this-was-made-section-view-model>
+```
+
+### Pitfall: "Auto-dubbed" uses the same section
+
+The same `howThisWasMadeSectionViewModel` also appears on videos that YouTube **automatically dubbed**.
+That is not a creator AI disclosure. In a sample of 11 AI-music search results, **4 of the 5** videos with
+the section were only auto-dubbed:
+
+```json
+{ "bodyHeader": { "content": "Auto-dubbed" },
+  "bodyText":   { "content": "Audio tracks for some languages were automatically generated. Learn more" },
+  … "url": "//support.google.com/youtube/answer/15569972?hl=en" }
+```
+
+If you only check that the section exists, many ordinary channels would be flagged. See
+`src/shared/disclosure.ts`.
+
+### How we classify it (language-independent first)
+
+| Signal | Meaning |
+|---|---|
+| Link to `support.google.com/youtube/answer/15447836` | **Made with AI** → counts as AI |
+| Link to `…/answer/14328491` | Older "Altered or synthetic content" article → counts as AI |
+| Link to `…/answer/15569972` | **Auto-dubbed** → explicitly *not* AI |
+| Header/body text (English fallback) | `Made with AI`, `Altered or synthetic`, `altered or fully generated`, `digitally altered/generated` |
+
+The spec mentioned "Altered or synthetic content". That wording is **no longer what YouTube shows**. The
+current label is "Made with AI". The old wording is kept as a text fallback. The `hl=` URL parameter was
+ignored during this session (the header stayed English), so **localized header text is unverified**.
+That is why the help-article ID is checked first.
+
+We only look inside `howThisWasMadeSectionViewModel`, never at titles or descriptions. A creator who
+writes "made with AI" in a title does not trigger the signal.
+
+We did not find a separate in-player "Altered or synthetic content" overlay on the sampled videos. Such
+an overlay has been reported for sensitive topics. If one appears, it would need to be added here.
+
+### Reading it fresh after SPA navigation
+
+`window.ytInitialData` / `ytInitialPlayerResponse` are only correct for the **first** page load. After
+that:
+
+| Source | Works | Notes |
+|---|---|---|
+| `yt-navigate-finish` event → `detail.response.{response, playerResponse}` | ✅ | Fires for watch pages **and every Shorts swipe**. Primary source. |
+| `document.querySelector('ytd-page-manager').getCurrentData()` → `{response, playerResponse}` | ✅ | Used when the extension attaches after the event already fired. |
+| `ytInitialData` | ⚠️ | First load only. Last-resort fallback. |
+| Rendered `how-this-was-made-section-view-model` | ⚠️ | May be stale during SPA transitions. Only used if the data has no structured description at all (i.e. the shape changed). |
+
+Events observed per navigation: `yt-navigate-start` → `yt-page-data-fetched` → `yt-navigate-finish` →
+`yt-page-data-updated`.
+
+## 2. Channel IDs per surface
+
+Rendered links contain only `@handles` (for example `/@veritasium`). Handles can be changed by the owner,
+so they are unusable as keys. The stable `UC…` ID lives in **JS properties** on YouTube's custom elements.
+A content script's isolated world cannot read those properties, so `src/bridge/bridge.ts` runs in the
+page's MAIN world and copies the IDs into `data-botless-*` attributes.
+
+| Surface | Element | Channel ID path (verified) |
+|---|---|---|
+| Search results | `ytd-video-renderer` | `el.data.ownerText.runs[0].navigationEndpoint.browseEndpoint.browseId` |
+| Home feed, watch sidebar, parts of search (new markup) | `yt-lockup-view-model` | `el.rawProps.data()` → `.metadata.lockupMetadataViewModel.image.decoratedAvatarViewModel.rendererContext.commandContext.onTap.innertubeCommand.browseEndpoint.browseId` |
+| Older sidebar / grids / playlists | `ytd-compact-video-renderer`, `ytd-rich-grid-media`, `ytd-grid-video-renderer`, `ytd-playlist-*-renderer` | `el.data.{ownerText,longBylineText,shortBylineText}…browseEndpoint.browseId` |
+| Shorts shelves | `ytm-shorts-lockup-view-model(-v2)` | **None.** `rawProps` is empty. The parent `grid-shelf-view-model` data holds only `reelWatchEndpoint.videoId`. |
+| Watch page | `#movie_player` | `playerResponse.videoDetails.channelId` (also `.author` for the name) |
+| Shorts player | `#shorts-player` | `getPlayerResponse().videoDetails.channelId` |
+| Channel page | — | `response.metadata.channelMetadataRenderer.externalId` |
+
+Notes:
+
+- `el.rawProps.data` on lockups is a **function** (a signal getter), not an object.
+- Lockups carry `contentId` + `contentType: "LOCKUP_CONTENT_TYPE_VIDEO"`. For playlists `contentId` is not
+  a video ID.
+- **Don't regex for `UC[\w-]{22}` over renderer JSON.** On a Shorts shelf this matched
+  `UChgCIhMIg_CDmIKRlwMVWiS`, which is part of a base64 tracking param. Only `browseEndpoint.browseId` is
+  trusted.
+- Shorts shelf tiles are badged only when the video → channel pair has been seen elsewhere (a watch page,
+  or a regular tile for the same video). These pairs go into a local map (`vmap`, 3000 entries max).
+  Otherwise the tile stays unbadged. Fetching each Short's page would fix this but costs one request per
+  tile, so we don't.
+- YouTube **recycles** tile elements while scrolling: the same element gets new data and a new `href`.
+  The bridge re-stamps an element whenever its first watch/shorts link `href` changes.
+- `meta[itemprop="channelId"]` was absent on the SPA watch page.
+- A search results page in the new layout had lockup ad slots whose links were `googleadservices.com`.
+  Anything inside `ytd-ad-slot-renderer` / `ytd-in-feed-ad-layout-renderer` is skipped.
+
+## 3. Thumbnails, owner area, theme
+
+| Purpose | Selector |
+|---|---|
+| Thumbnail container (badge host) | `yt-thumbnail-view-model`, `.ytLockupViewModelContentImage`, `[class*=shortsLockupViewModelHostThumbnail…]`, `ytd-thumbnail`, `a#thumbnail` |
+| Cell to fade/hide (so grids reflow) | `ytd-rich-item-renderer`, `[class*=GridShelfViewModelGridShelfItem]`, … |
+| Watch page channel name | `ytd-watch-metadata ytd-video-owner-renderer #channel-name` |
+| Shorts channel bar | `ytd-shorts yt-reel-channel-bar-view-model` (inside `ytd-reel-video-renderer`) |
+| Dark theme | `html[dark]` attribute (also `is-dark-theme` on `ytd-watch-flexy`) |
+| Next video | `#movie_player .ytp-next-button`. Not usable in some logged-out layouts, where the fallback is `history.back()`. |
+| Next Short | `#navigation-button-down button` |
+
+Hidden tabs: YouTube skips rendering the Shorts overlay, and `requestAnimationFrame` doesn't fire. The
+content script's render pass uses rAF, so badges are applied once the tab is visible. The owner pill is
+re-added on every scan if it's missing.
+
+## 4. YouTube Data API v3
+
+`videos` resource → `status.containsSyntheticMedia` (boolean) exists
+([reference](https://developers.google.com/youtube/v3/docs/videos)). The docs describe it as the field a
+channel owner sets in `videos.insert` / `videos.update` to **disclose** A/S content. We did not verify
+whether `videos.list` returns it for other people's videos, because that needs an API key and a network
+call.
+
+**Not used**, because:
+
+1. Phase 1 must send no data anywhere. Every API call would reveal the video IDs the user sees to Google
+   Cloud under our key.
+2. It would need an extra host permission (`https://www.googleapis.com/*`) and an API key shipped in
+   the extension, with quota limits of 1 unit per call and 10k/day by default.
+3. The watch page already contains the same disclosure for free.
+
+If phase 2 adds a backend, the server could call it in batch (`videos.list?part=status&id=…`, up to 50
+IDs per call) to pre-compute channel ratios without the user watching anything.

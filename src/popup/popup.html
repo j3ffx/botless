@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Botless</title>
+    <link rel="stylesheet" href="theme.css" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="top">
+      <img src="icons/icon-32.png" width="22" height="22" alt="" />
+      <h1>Botless</h1>
+      <label class="switch" title="Turn Botless on or off">
+        <input type="checkbox" id="enabled" />
+        <span></span>
+        <b class="sr-only">Enabled</b>
+      </label>
+    </header>
+
+    <section class="stat">
+      <span class="stat-num" id="today">0</span>
+      <span class="muted" id="today-label">likely-AI videos flagged today</span>
+    </section>
+
+    <section class="card" id="channel" hidden>
+      <div class="card-head">
+        <div class="card-title">
+          <span class="eyebrow">Current channel</span>
+          <strong id="ch-name"></strong>
+        </div>
+        <span class="pill" id="ch-verdict"></span>
+      </div>
+      <ul class="reasons" id="ch-reasons"></ul>
+
+      <div class="group">
+        <span class="eyebrow">Your mark <span class="muted">— always wins, only for you</span></span>
+        <div class="row">
+          <button class="btn ai" id="mark-ai" type="button">Mark as AI</button>
+          <button class="btn human" id="mark-human" type="button">Mark as human</button>
+          <button class="btn link" id="mark-clear" type="button" hidden>Clear</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <span class="eyebrow">Community vote <span class="muted">— coming in phase 2</span></span>
+        <div class="row">
+          <button class="btn" type="button" disabled title="Phase 1 never sends data anywhere">Vote AI</button>
+          <button class="btn" type="button" disabled title="Phase 1 never sends data anywhere">Vote human</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="empty" id="empty">
+      <p class="muted" id="empty-msg">Open a YouTube video, Short or channel to see its verdict.</p>
+    </section>
+
+    <footer>
+      <span class="muted">Runs 100% locally</span>
+      <button class="btn link" id="open-options" type="button">Settings</button>
+    </footer>
+    <script src="popup.js"></script>
+  </body>
+</html>

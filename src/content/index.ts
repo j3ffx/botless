@@ -1,0 +1,228 @@
+/**
+ * Isolated-world content script. Reads the IDs the MAIN-world bridge stamped onto tiles, looks up
+ * verdicts in chrome.storage.local, and renders badges / fade / hide, the watch-page pill and auto-skip.
+ * All writes go through the service worker so concurrent tabs can't clobber each other.
+ */
+import type { ChannelSummary, SwRequest, TabRequest, TabResponse } from '../shared/messages';
+import { normalizeSettings, type Settings } from '../shared/settings';
+import { getChannels, getOverrides, getSettings, getVmap, isChannelKey, KEY } from '../shared/storage';
+import type { ChannelRecord, Overrides, PageInfo, VerdictResult } from '../shared/types';
+import { resolveVerdict } from '../shared/verdict';
+import { applyTile, clearTile, hasBadge } from './badges';
+import { cancelSkip, maybeSkip, renderOwnerBadge } from './watch';
+
+let settings: Settings = normalizeSettings(undefined);
+let overrides: Overrides = {};
+let vmap: Record<string, string> = {};
+/** undefined = not loaded yet, null = loaded and unknown to us. */
+const channels = new Map<string, ChannelRecord | null>();
+/** Bumped whenever something that affects rendering changes; part of each tile's applied signature. */
+let gen = 0;
+let page: PageInfo | null = null;
+let pageResult: VerdictResult | null = null;
+
+const send = (msg: SwRequest) => chrome.runtime.sendMessage(msg).catch(() => undefined);
+
+// ---- Batched fire-and-forget messages ----
+
+const pendingLoads = new Set<string>();
+const pendingFlags = new Set<string>();
+const pendingPairs = new Map<string, string>();
+const pendingRefresh = new Set<string>();
+const flaggedThisTab = new Set<string>();
+let flushTimer: ReturnType<typeof setTimeout> | undefined;
+
+function scheduleFlush(): void {
+  flushTimer ??= setTimeout(() => {
+    flushTimer = undefined;
+    if (pendingFlags.size) send({ type: 'flagged', videoIds: [...pendingFlags] });
+    if (pendingPairs.size) send({ type: 'learnVideos', pairs: [...pendingPairs] });
+    if (pendingRefresh.size) send({ type: 'refresh', channelIds: [...pendingRefresh] });
+    pendingFlags.clear();
+    pendingPairs.clear();
+    pendingRefresh.clear();
+  }, 2000);
+}
+
+let loadTimer: ReturnType<typeof setTimeout> | undefined;
+function loadMissing(): void {
+  loadTimer ??= setTimeout(async () => {
+    loadTimer = undefined;
+    const ids = [...pendingLoads];
+    pendingLoads.clear();
+    const got = await getChannels(ids);
+    for (const id of ids) channels.set(id, got[id] ?? null);
+    schedulePass();
+  }, 50);
+}
+
+function verdictFor(cid: string): VerdictResult | undefined {
+  const rec = channels.get(cid);
+  if (rec === undefined && !overrides[cid]) {
+    pendingLoads.add(cid);
+    loadMissing();
+    return undefined;
+  }
+  const { result, stale } = resolveVerdict(rec ?? undefined, overrides[cid], settings, Date.now());
+  if (stale) {
+    pendingRefresh.add(cid);
+    scheduleFlush();
+  }
+  return result;
+}
+
+function noteFlagged(vid: string | undefined): void {
+  if (!vid || flaggedThisTab.has(vid)) return;
+  flaggedThisTab.add(vid);
+  pendingFlags.add(vid);
+  scheduleFlush();
+}
+
+// ---- Tile pass (runs after each debounced bridge scan) ----
+
+function pass(): void {
+  const tiles = document.querySelectorAll<HTMLElement>('[data-botless-key], [data-botless-applied]');
+  for (const el of tiles) {
+    const vid = el.dataset.botlessVid;
+    let cid = el.dataset.botlessCid;
+    if (vid && cid && vmap[vid] !== cid) pendingPairs.set(vid, cid);
+    cid ??= vid ? vmap[vid] : undefined;
+    if (!settings.enabled || !cid || !el.dataset.botlessKey) {
+      if (el.dataset.botlessApplied) clearTile(el);
+      continue;
+    }
+    const result = verdictFor(cid);
+    if (!result) continue; // loading; the load callback schedules another pass
+    const action = result.verdict ? settings.actions[result.verdict] : 'none';
+    const sig = `${el.dataset.botlessKey}|${result.verdict}|${action}|${gen}`;
+    const needsBadge = action === 'badge' || action === 'fade';
+    if (el.dataset.botlessApplied === sig && (!needsBadge || hasBadge(el))) continue;
+    if (action === 'none') clearTile(el);
+    else if (!applyTile(el, result, action)) continue; // thumbnail not rendered yet; retry next pass
+    el.dataset.botlessApplied = sig;
+    if (result.verdict === 'ai') noteFlagged(vid);
+  }
+  if (pendingPairs.size) scheduleFlush();
+  // The owner area renders lazily and YouTube re-renders it on navigation; restore the pill if it's gone.
+  if (page && pageResult && pillVisible(pageResult) && !document.querySelector('.botless-owner')) {
+    renderOwnerBadge(page, pageResult, true);
+  }
+}
+
+let passQueued = false;
+function schedulePass(): void {
+  if (passQueued) return;
+  passQueued = true;
+  requestAnimationFrame(() => {
+    passQueued = false;
+    pass();
+  });
+}
+
+// ---- Current page (watch / shorts / channel) ----
+
+/** The pill follows the verdict's action, except "Probably AI" always shows on the video you're watching. */
+const pillVisible = (r: VerdictResult): boolean =>
+  settings.enabled && !!r.verdict && (r.verdict === 'ai' || settings.actions[r.verdict] !== 'none');
+
+async function onPage(info: PageInfo): Promise<void> {
+  const changedVideo = info.videoId !== page?.videoId || info.pageType !== page?.pageType;
+  if (changedVideo) cancelSkip();
+  page = info;
+  pageResult = null;
+  renderOwnerBadge(info, null, false);
+  if (!settings.enabled || !info.channelId) return;
+
+  let summary: ChannelSummary | undefined;
+  if (info.videoId && info.disclosure) {
+    summary = await send({
+      type: 'observe',
+      channelId: info.channelId,
+      name: info.channelName,
+      videoId: info.videoId,
+      labeled: info.disclosure === 'ai',
+    });
+  } else {
+    summary = await send({ type: 'getChannel', channelId: info.channelId });
+  }
+  if (!summary || page !== info) return; // navigated away meanwhile
+  channels.set(info.channelId, summary.record ?? null);
+  pageResult = summary.result;
+  gen++;
+  schedulePass();
+
+  renderOwnerBadge(info, pageResult, pillVisible(pageResult));
+  if (pageResult.verdict === 'ai') {
+    noteFlagged(info.videoId);
+    maybeSkip(info, pageResult, settings);
+  }
+}
+
+document.addEventListener('botless:page', (e) => {
+  const detail = (e as CustomEvent<string>).detail;
+  if (typeof detail !== 'string') return;
+  try {
+    void onPage(JSON.parse(detail) as PageInfo);
+  } catch {
+    /* ignore malformed */
+  }
+});
+document.addEventListener('botless:scan', schedulePass);
+document.addEventListener('yt-navigate-start', () => cancelSkip());
+
+// ---- Popup queries ----
+
+chrome.runtime.onMessage.addListener((msg: TabRequest, _sender, reply: (r: TabResponse) => void) => {
+  if (msg?.type === 'getPageInfo') reply({ page: page && page.url === location.href ? page : null });
+});
+
+// ---- Storage sync ----
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local') return;
+  let dirty = false;
+  for (const [key, { newValue }] of Object.entries(changes)) {
+    if (key === KEY.settings) {
+      const wasEnabled = settings.enabled;
+      settings = normalizeSettings(newValue);
+      if (wasEnabled !== settings.enabled && page) void onPage(page);
+      if (!settings.autoSkip || !settings.enabled) cancelSkip();
+      dirty = true;
+    } else if (key === KEY.overrides) {
+      overrides = (newValue as Overrides) ?? {};
+      dirty = true;
+    } else if (key === KEY.vmap) {
+      vmap = (newValue as Record<string, string>) ?? {};
+      dirty = true;
+    } else if (isChannelKey(key)) {
+      const id = key.slice(2);
+      if (channels.has(id)) {
+        channels.set(id, (newValue as ChannelRecord) ?? null);
+        dirty = true;
+      }
+    }
+  }
+  if (dirty) {
+    gen++;
+    schedulePass();
+    const pageChannelChanged = !!page?.channelId && !!changes[KEY.channel(page.channelId)];
+    if (changes[KEY.settings] || changes[KEY.overrides] || pageChannelChanged) refreshPill();
+  }
+});
+
+function refreshPill(): void {
+  if (!page?.channelId) return;
+  const result = verdictFor(page.channelId);
+  if (!result) return;
+  pageResult = result;
+  renderOwnerBadge(page, result, pillVisible(result));
+}
+
+// ---- Boot ----
+
+void (async () => {
+  [settings, overrides, vmap] = await Promise.all([getSettings(), getOverrides(), getVmap()]);
+  gen++;
+  schedulePass();
+  document.dispatchEvent(new CustomEvent('botless:request-page'));
+})();

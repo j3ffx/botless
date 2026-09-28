@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Botless settings</title>
+    <link rel="stylesheet" href="theme.css" />
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main>
+      <header class="head">
+        <img src="icons/icon-48.png" width="36" height="36" alt="" />
+        <div>
+          <h1>Botless for YouTube</h1>
+          <p class="muted">Judges each channel as Probably Human, Probably AI or Inconclusive. Everything runs on this device.</p>
+        </div>
+        <span class="saved" id="saved" aria-live="polite"></span>
+      </header>
+
+      <section>
+        <h2>General</h2>
+        <div class="field">
+          <div><label for="enabled">Enabled</label><p class="hint">Badges, fading, hiding and auto-skip.</p></div>
+          <label class="switch"><input type="checkbox" id="enabled" data-path="enabled" /><span></span></label>
+        </div>
+        <div class="field">
+          <div><label for="autoSkip">Auto-skip “Probably AI” videos</label><p class="hint">Shows an Undo toast first.</p></div>
+          <label class="switch"><input type="checkbox" id="autoSkip" data-path="autoSkip" /><span></span></label>
+        </div>
+        <div class="field">
+          <div><label for="skipTarget">When skipping a video</label><p class="hint">Shorts always move to the next Short.</p></div>
+          <select id="skipTarget" data-path="skipTarget">
+            <option value="next">Play the next video</option>
+            <option value="back">Go back</option>
+          </select>
+        </div>
+        <div class="field">
+          <div><label for="skipDelaySeconds">Undo window</label><p class="hint">Seconds before the skip happens.</p></div>
+          <input type="number" id="skipDelaySeconds" data-path="skipDelaySeconds" min="1" max="15" step="1" />
+        </div>
+      </section>
+
+      <section>
+        <h2>What to do with each verdict</h2>
+        <div class="field">
+          <div><label for="act-ai"><span class="pill ai">Probably AI</span></label></div>
+          <select id="act-ai" data-path="actions.ai">
+            <option value="badge">Badge only</option>
+            <option value="fade">Fade</option>
+            <option value="hide">Hide completely</option>
+            <option value="none">Do nothing</option>
+          </select>
+        </div>
+        <div class="field">
+          <div><label for="act-inc"><span class="pill inconclusive">Inconclusive</span></label></div>
+          <select id="act-inc" data-path="actions.inconclusive">
+            <option value="badge">Badge only</option>
+            <option value="fade">Fade</option>
+            <option value="hide">Hide completely</option>
+            <option value="none">Do nothing</option>
+          </select>
+        </div>
+        <div class="field">
+          <div><label for="act-human"><span class="pill human">Probably Human</span></label></div>
+          <select id="act-human" data-path="actions.human">
+            <option value="none">Show nothing</option>
+            <option value="badge">Subtle green badge</option>
+          </select>
+        </div>
+      </section>
+
+      <section>
+        <h2>Thresholds</h2>
+        <p class="muted section-intro">
+          A channel is judged from the videos of it you have watched. YouTube’s own “Made with AI” label is the
+          strongest signal; a missing label is only weak evidence, since many creators never disclose.
+        </p>
+        <div class="field">
+          <div><label for="aiRatio">Labeled share for “Probably AI”</label><p class="hint">Of the channel’s videos you’ve watched.</p></div>
+          <span class="unit"><input type="number" id="aiRatio" data-path="thresholds.aiRatio" data-scale="100" min="5" max="100" step="5" />%</span>
+        </div>
+        <div class="field">
+          <div><label for="minVideosForRatio">Minimum videos before judging</label><p class="hint">Below this, labels only make it Inconclusive.</p></div>
+          <input type="number" id="minVideosForRatio" data-path="thresholds.minVideosForRatio" min="1" max="100" step="1" />
+        </div>
+        <div class="field">
+          <div><label for="humanMinVideos">Unlabeled videos for “Probably Human”</label><p class="hint">Watched videos with no AI label at all.</p></div>
+          <input type="number" id="humanMinVideos" data-path="thresholds.humanMinVideos" min="1" max="1000" step="1" />
+        </div>
+        <details>
+          <summary>Advanced scoring</summary>
+          <div class="field">
+            <div><label for="aiScore">Score needed for “Probably AI”</label><p class="hint">0.05 – 1. Scores run from −1 (human) to +1 (AI).</p></div>
+            <input type="number" id="aiScore" data-path="thresholds.aiScore" min="0.05" max="1" step="0.05" />
+          </div>
+          <div class="field">
+            <div><label for="humanScore">Score needed for “Probably Human”</label><p class="hint">−1 – −0.05.</p></div>
+            <input type="number" id="humanScore" data-path="thresholds.humanScore" min="-1" max="-0.05" step="0.05" />
+          </div>
+          <div class="field">
+            <div><label for="minVotes">Minimum community votes</label><p class="hint">Phase 2. Votes are ignored below this.</p></div>
+            <input type="number" id="minVotes" data-path="thresholds.minVotes" min="1" max="10000" step="1" />
+          </div>
+          <div class="field">
+            <div><label for="voteWeight">Weight of a unanimous vote</label><p class="hint">Phase 2. 0 – 1.</p></div>
+            <input type="number" id="voteWeight" data-path="thresholds.voteWeight" min="0" max="1" step="0.05" />
+          </div>
+          <div class="field">
+            <div><label for="cacheTtlDays">Re-check cached verdicts after</label></div>
+            <span class="unit"><input type="number" id="cacheTtlDays" data-path="cacheTtlDays" min="0.01" max="365" step="1" />days</span>
+          </div>
+          <div class="field">
+            <div><label for="observationTtlDays">Forget channels unseen for</label><p class="hint">Your own marks are never forgotten.</p></div>
+            <span class="unit"><input type="number" id="observationTtlDays" data-path="observationTtlDays" min="1" max="3650" step="1" />days</span>
+          </div>
+          <button class="btn" id="reset-settings" type="button">Restore default settings</button>
+        </details>
+      </section>
+
+      <section>
+        <h2>Channels you marked</h2>
+        <p class="muted section-intro" id="ov-empty">You haven’t marked any channels yet. Use the toolbar popup on a video or channel page.</p>
+        <table class="ov" id="ov-table" hidden>
+          <thead><tr><th scope="col">Channel</th><th scope="col">Your mark</th><th scope="col">Since</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+          <tbody id="ov-body"></tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Your data</h2>
+        <p class="muted section-intro">
+          Settings, your marks and what the extension observed are stored only in this browser.
+          <span id="data-size"></span>
+        </p>
+        <div class="row">
+          <button class="btn" id="export" type="button">Export JSON</button>
+          <label class="btn" for="import-file">Import JSON</label>
+          <input type="file" id="import-file" accept="application/json,.json" hidden />
+          <button class="btn danger" id="clear-obs" type="button">Clear observations</button>
+        </div>
+        <p class="status" id="data-status" role="status"></p>
+      </section>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>
