@@ -25,6 +25,7 @@ and `npm run smoke` runs the automated one in Chrome for Testing (setup in `CLAU
 - Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). The hook
   and CI check them; the allowed types and scopes are in `CLAUDE.md` → Commits.
 - One logical change per PR, with a body that explains *why*.
+- PRs are squash-merged, so the **PR title** becomes the commit message and must follow the same format.
 - If you touch a YouTube selector or data path, verify it on live YouTube and update `docs/YOUTUBE-DOM.md`.
 - CI must pass: typecheck, tests, build, the Chrome smoke test, and the commit check.
 

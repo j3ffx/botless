@@ -43,6 +43,8 @@ BREAKING CHANGE: … (when relevant)
   footer.
 - Keep commits small and logical, one type per commit. If a change needs two types, split it into two
   commits.
+- Pull requests are **squash-merged**: the PR title becomes the commit on `main`, so it follows the same
+  rules (checked by `.github/workflows/pr-title.yml`).
 - Commits before `ce9d981` predate this rule. Don't rewrite them.
 
 ## CI and releases
