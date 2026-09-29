@@ -15,8 +15,28 @@ npx tsc --noEmit     # typecheck
 npx vitest run       # unit tests
 ```
 
-Run typecheck, tests and build before every commit. Keep commits small and logical, with messages that
-explain *why*.
+Run typecheck, tests and build before every commit.
+
+## Commits
+
+Follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/) strictly:
+
+```
+type(scope)!: imperative description, lowercase, no trailing period
+
+Body explaining *why* (the diff already shows what).
+
+BREAKING CHANGE: … (when relevant)
+```
+
+- **Types:** `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `build`, `ci`, `chore`, `style`, `revert`.
+- **Scope** is optional. When you use one, name the area: `popup`, `options`, `content`, `bridge`, `sw`,
+  `checker`, `scoring`, `shared`, `docs`.
+- Keep the header to 72 characters or fewer. Mark breaking changes with `!` and/or a `BREAKING CHANGE:`
+  footer.
+- Keep commits small and logical, one type per commit. If a change needs two types, split it into two
+  commits.
+- Commits before `ce9d981` predate this rule. Don't rewrite them.
 
 ## Invariants (discuss before changing)
 
