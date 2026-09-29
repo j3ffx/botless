@@ -3,6 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "description": "Botless for YouTube — judges each channel as Probably Human / Probably AI / Inconclusive.",
+  "license": "GPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/j3ffx/botless.git"
+  },
+  "bugs": {
+    "url": "https://github.com/j3ffx/botless/issues"
+  },
   "type": "module",
   "engines": {
     "node": ">=22.12"

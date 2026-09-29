@@ -1,5 +1,8 @@
 # Botless for YouTube
 
+[![CI](https://github.com/j3ffx/botless/actions/workflows/ci.yml/badge.svg)](https://github.com/j3ffx/botless/actions/workflows/ci.yml)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
+
 A Manifest V3 Chrome extension that judges each **channel** as **Probably Human**, **Probably AI** or
 **Inconclusive**, then badges, fades, hides or auto-skips that channel's videos. It is the YouTube
 counterpart of SkipIfFake.
@@ -9,16 +12,17 @@ Phase 1 runs **on your device**. It has no analytics and no servers. The popup h
 default. While it's off, Botless is fully local and makes no requests of its own; it learns only from
 what you watch.
 
-## Install (developer mode)
+## Install
 
-```bash
-npm install
-npm run build        # -> dist/
-```
+Botless isn't on the Chrome Web Store yet. Until then:
 
-1. Open `chrome://extensions` and turn on **Developer mode**.
-2. Click **Load unpacked** and pick the `dist/` folder.
-3. Reload any YouTube tabs that were already open.
+1. Download `botless-X.Y.Z.zip` from the [latest release](https://github.com/j3ffx/botless/releases/latest)
+   and unzip it.
+2. Open `chrome://extensions` and turn on **Developer mode**.
+3. Click **Load unpacked** and pick the unzipped folder.
+4. Reload any YouTube tabs that were already open.
+
+To build it yourself instead, run `npm install && npm run build` and load the `dist/` folder.
 
 Requires Chrome 111+ (for `"world": "MAIN"` content scripts).
 
@@ -258,3 +262,12 @@ spec before building anything. See [`docs/ROADMAP.md`](docs/ROADMAP.md). What's 
 
 A backend would also need the `host_permissions` entry for its origin, a privacy notice update, and
 opt-in consent.
+
+## License
+
+Copyright (C) 2026 j3ffx. Botless is free software, licensed under the
+[GNU General Public License v3.0](LICENSE): you can use, study, share and modify it, and anything you
+distribute that's based on it must be released under the same license, with its source.
+
+Botless is an independent project. It is not affiliated with, endorsed by or sponsored by YouTube or
+Google. YouTube is a trademark of Google LLC.
