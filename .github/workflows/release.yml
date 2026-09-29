@@ -1,0 +1,70 @@
+# Pushing a vN.N.N tag (made by `npm version patch|minor|major`, see CLAUDE.md → Releases) runs the full CI,
+# then publishes a GitHub Release with the store-ready zip and notes built from the Conventional Commits.
+# Run it by hand (Actions → Release → Run workflow) for a dry run: same build, zip and notes, nothing published.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    name: ${{ github.ref_type == 'tag' && 'Publish release' || 'Dry run' }}
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # create the release
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # release notes need the previous tag and its history
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Tag, package.json and manifest agree
+        id: version
+        run: |
+          version=$(node -p "require('./package.json').version")
+          manifest=$(node -p "require('./src/static/manifest.json').version")
+          [ "$version" = "$manifest" ] || { echo "::error::package.json $version != manifest.json $manifest"; exit 1; }
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error::tag $GITHUB_REF_NAME doesn't match version $version. Release with 'npm version'."; exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: botless-dist
+          path: dist/
+      - run: npm run package -- "botless-${{ steps.version.outputs.version }}.zip"
+      - name: Release notes
+        run: |
+          node scripts/release-notes.mjs ${{ github.ref_type == 'tag' && github.ref_name || 'HEAD' }} > notes.md
+          cat notes.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish GitHub Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "$GITHUB_REF_NAME" "botless-${{ steps.version.outputs.version }}.zip"
+          --title "Botless ${{ steps.version.outputs.version }}" --notes-file notes.md --verify-tag
+
+      - name: Keep the dry-run output
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v7
+        with:
+          name: botless-${{ steps.version.outputs.version }}-dry-run
+          path: |
+            botless-*.zip
+            notes.md
+          retention-days: 7

@@ -1,0 +1,85 @@
+# Every push to main and every pull request: the same checks as `npm run verify`, the guarded CLAUDE.md
+# invariants (tests/invariants.test.ts), a real-Chrome smoke test of the built extension, and the
+# Conventional Commits rule. The built extension is kept as an artifact you can load unpacked.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call: # reused by release.yml, so a release is built and tested exactly like CI
+
+concurrency:
+  group: ci-${{ github.workflow_ref }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Typecheck, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run check:dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: botless-dist
+          path: dist/
+          retention-days: 14
+          if-no-files-found: error
+
+  smoke:
+    name: Smoke test in Chrome
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # Test the exact files that were built and checked above.
+      - uses: actions/download-artifact@v8
+        with:
+          name: botless-dist
+          path: dist/
+      # Ubuntu 24.04 blocks the unprivileged user namespaces Chrome's sandbox needs; allow them rather
+      # than running Chrome with --no-sandbox.
+      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      # Branded Chrome ignores --load-extension since v137; Chrome for Testing still honours it.
+      - name: Install Chrome for Testing
+        run: |
+          path=$(npx @puppeteer/browsers install chrome@stable --path "$RUNNER_TEMP/browsers" | tail -n 1 | cut -d' ' -f2-)
+          echo "CHROME_PATH=$path" >> "$GITHUB_ENV"
+          "$path" --version
+      - run: npm run smoke
+
+  commits:
+    name: Conventional Commits
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: Check commit messages
+        env:
+          RANGE: ${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || github.event_name == 'push' && format('{0}..{1}', github.event.before, github.sha) || github.sha }}
+        run: node scripts/check-commits.mjs "$RANGE"

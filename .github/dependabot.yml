@@ -1,0 +1,28 @@
+# Weekly dependency PRs, grouped to keep the noise down. Titles follow Conventional Commits
+# ("build(deps-dev): …", "ci(deps): …"), so they pass the commit check. Security fixes come as they're found.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+      prefix-development: build
+      include: scope
+    groups:
+      dev:
+        dependency-type: development
+        update-types: [minor, patch]
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      actions:
+        patterns: ['*']
