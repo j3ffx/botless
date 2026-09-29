@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
-import { classifySection, detectDisclosureInData, detectDisclosureInDom } from '../src/shared/disclosure';
+import { classifySection, detectDisclosureInData, detectDisclosureInDom, helpArticleId } from '../src/shared/disclosure';
 import { AUTO_DUBBED_SECTION, MADE_WITH_AI_SECTION, watchResponse } from './fixtures';
 
 describe('detectDisclosureInData', () => {
@@ -26,6 +26,21 @@ describe('detectDisclosureInData', () => {
   });
 });
 
+describe('helpArticleId', () => {
+  it('reads every link form YouTube uses', () => {
+    expect(helpArticleId('//support.google.com/youtube/answer/15447836?hl=en')).toBe('15447836'); // watch data
+    expect(helpArticleId('https://support.google.com/youtube/answer/15569972')).toBe('15569972'); // rendered DOM
+    expect(helpArticleId('https://support.google.com/youtube/answer/15447836?hl=de#x')).toBe('15447836');
+  });
+
+  it('rejects other hosts, other paths and non-URLs', () => {
+    expect(helpArticleId('https://support.google.com/chrome/answer/15447836')).toBeNull();
+    expect(helpArticleId('https://support.google.com/youtube/answer/15447836/extra')).toBeNull();
+    expect(helpArticleId('Learn more')).toBeNull();
+    expect(helpArticleId('')).toBeNull();
+  });
+});
+
 describe('classifySection', () => {
   it('uses the help-article ID regardless of language', () => {
     expect(
@@ -34,6 +49,17 @@ describe('classifySection', () => {
     expect(
       classifySection({ header: 'Automatisch synchronisiert', body: '', urls: ['https://support.google.com/youtube/answer/15569972'] }),
     ).toBe('auto-dubbed');
+  });
+
+  it('only trusts links whose host is exactly support.google.com', () => {
+    const spoofed = [
+      'https://evil.example/support.google.com/youtube/answer/15447836',
+      'https://support.google.com.evil.example/youtube/answer/15447836',
+      'https://evil.example/?next=//support.google.com/youtube/answer/15447836',
+      'http://support.google.com/youtube/answer/15447836',
+      'support.google.com/youtube/answer/15447836',
+    ];
+    for (const url of spoofed) expect(classifySection({ header: 'Something else', body: '', urls: [url] }), url).toBe('none');
   });
 
   it('falls back to English text, including the older wording', () => {

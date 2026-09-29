@@ -30,7 +30,20 @@ export const AUTODUB_ANSWER_IDS = new Set(['15569972']);
 const AI_TEXT = [/made with ai/i, /altered or synthetic/i, /altered or fully generated/i, /digitally (?:altered|generated)/i];
 const AUTODUB_TEXT = [/auto-?dubbed/i, /audio tracks .* automatically generated/i];
 
-const ANSWER_RE = /support\.google\.com\/youtube\/answer\/(\d+)/g;
+/**
+ * The article ID of a YouTube help link (`//support.google.com/youtube/answer/<id>?hl=…`), or null. The host is
+ * checked exactly: a substring match would also accept `evil.example/support.google.com/youtube/answer/…`.
+ */
+export function helpArticleId(url: string): string | null {
+  let u: URL;
+  try {
+    u = new URL(url, 'https://www.youtube.com/'); // YouTube's data uses protocol-relative links
+  } catch {
+    return null;
+  }
+  if (u.protocol !== 'https:' || u.hostname !== 'support.google.com') return null;
+  return /^\/youtube\/answer\/(\d+)$/.exec(u.pathname)?.[1] ?? null;
+}
 
 export interface SectionFacts {
   header: string;
@@ -39,7 +52,7 @@ export interface SectionFacts {
 }
 
 export function classifySection(s: SectionFacts): Disclosure {
-  const ids = s.urls.flatMap((u) => [...u.matchAll(ANSWER_RE)].map((m) => m[1]!));
+  const ids = s.urls.map(helpArticleId).filter((id): id is string => id !== null);
   if (ids.some((id) => AI_ANSWER_IDS.has(id))) return 'ai';
   if (ids.some((id) => AUTODUB_ANSWER_IDS.has(id))) return 'auto-dubbed';
   const text = `${s.header}\n${s.body}`;
@@ -88,7 +101,7 @@ export function detectDisclosureInData(root: unknown): { disclosure: Disclosure;
           classifySection({
             header: sec.bodyHeader?.content ?? '',
             body: sec.bodyText?.content ?? '',
-            urls: urls.filter((u) => u.includes('support.google.com')),
+            urls: urls.filter((u) => helpArticleId(u) !== null),
           }),
         );
       } else if (v && typeof v === 'object') {
