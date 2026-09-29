@@ -1,0 +1,56 @@
+name: Bug report
+description: Something doesn't work, or a channel gets the wrong verdict.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks! Security problems go through **Security → Report a vulnerability**, not here.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include the page (home, search, watch, Shorts, channel…) and a video or channel link if you can.
+      placeholder: |
+        1. Open https://www.youtube.com/...
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Botless version
+      description: Shown in chrome://extensions.
+    validations:
+      required: true
+  - type: input
+    id: chrome
+    attributes:
+      label: Chrome version
+      description: chrome://version, first line.
+    validations:
+      required: true
+  - type: input
+    id: language
+    attributes:
+      label: YouTube language
+      description: The language YouTube's interface is shown in (it changes some of the page's text).
+      placeholder: English, Français…
+  - type: dropdown
+    id: active
+    attributes:
+      label: Active mode
+      options: ['Off', 'On', "Don't know"]
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots or console errors
+      description: Errors from the page's DevTools console or from the extension's service worker (chrome://extensions → Botless → service worker) help a lot.

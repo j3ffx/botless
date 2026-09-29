@@ -1,0 +1,28 @@
+name: Feature idea
+description: Suggest an improvement.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please check **docs/ROADMAP.md** first: some ideas were already tried or rejected on purpose, with the reasons.
+        Botless keeps two firm rules: nothing leaves your device unless Active mode is on, and it never acts on your YouTube account.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would it solve?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What do you suggest?
+    validations:
+      required: true
+  - type: checkboxes
+    id: roadmap
+    attributes:
+      label: Checks
+      options:
+        - label: I checked docs/ROADMAP.md and this isn't listed as rejected.
+          required: true
