@@ -1,0 +1,6 @@
+# LF everywhere, whatever the contributor's core.autocrlf: a CRLF .githooks/commit-msg ("#!/bin/sh\r")
+# fails to run, and CRLF would also show up as noise in diffs.
+* text=auto eol=lf
+
+*.png binary
+*.zip binary
