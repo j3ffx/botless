@@ -51,13 +51,17 @@ jobs:
           node scripts/release-notes.mjs ${{ github.ref_type == 'tag' && github.ref_name || 'HEAD' }} > notes.md
           cat notes.md >> "$GITHUB_STEP_SUMMARY"
 
+      # Releases are immutable once published (repo setting): neither the zip nor the tag can change afterwards.
+      # So the zip goes onto a draft first, and the release is published only once the upload succeeded.
       - name: Publish GitHub Release
         if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: >
-          gh release create "$GITHUB_REF_NAME" "botless-${{ steps.version.outputs.version }}.zip"
-          --title "Botless ${{ steps.version.outputs.version }}" --notes-file notes.md --verify-tag
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "botless-$VERSION.zip" --draft --verify-tag \
+            --title "Botless $VERSION" --notes-file notes.md
+          gh release edit "$GITHUB_REF_NAME" --draft=false
 
       - name: Keep the dry-run output
         if: github.ref_type != 'tag'
