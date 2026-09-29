@@ -1,0 +1,3 @@
+#!/bin/sh
+# Rejects commit messages that are not Conventional Commits (CLAUDE.md -> Commits).
+exec node scripts/check-commits.mjs --file "$1"

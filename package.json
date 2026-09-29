@@ -9,7 +9,9 @@
     "watch": "node scripts/build.mjs --watch",
     "icons": "node scripts/make-icons.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check:commits": "node scripts/check-commits.mjs",
+    "prepare": "node scripts/setup-hooks.mjs"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.300",
