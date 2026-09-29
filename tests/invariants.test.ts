@@ -1,3 +1,4 @@
+/// <reference types="node" />
 // Guards the invariants listed in CLAUDE.md, so that breaking one fails CI instead of relying on review.
 // It reads the sources with the TypeScript parser, so comments and strings never cause false matches.
 // If a test here fails on purpose, discuss the change first (CLAUDE.md), then update the test.
