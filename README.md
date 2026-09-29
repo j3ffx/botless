@@ -196,7 +196,7 @@ the service worker in batches of up to 2 seconds. The bundles are about 46 KB in
 ```bash
 npm run build       # production build -> dist/
 npm run watch       # rebuild on change (with inline source maps)
-npm test            # vitest: scoring, disclosure, extraction, cache/TTL, import validation
+npm test            # vitest: scoring, disclosure, extraction, cache/TTL, checks, settings, import, orphaned-script
 npm run typecheck
 npm run icons       # regenerate PNG icons
 ```
@@ -219,23 +219,28 @@ Dev-only helpers (not shipped):
 - Auto-skip toast, video paused during the countdown, skip after the delay, Undo keeps the video and
   isn't re-triggered, and the daily counter increments.
 - Shorts player: channel ID and disclosure detected from the `yt-navigate-finish` data.
-- **Not visually verified:** the pill placement on the Shorts overlay. The test tab was hidden, and
-  YouTube doesn't render that overlay in hidden tabs. The selector comes from an earlier visible
-  inspection.
+- Everything above, plus the Shorts overlay pill, auto-skip to the next video in a playlist (signed
+  in), "Latest Shorts from X" badging, background checks, the popup and Settings, both themes and
+  scrolling performance, was then confirmed by the owner in real Chrome, signed in, with YouTube in
+  French. The full manual test plan is in [`docs/TESTING.md`](docs/TESTING.md).
 
 ## Known limitations
 
 - Desktop `www.youtube.com` only (not `m.youtube.com`, not YouTube Music).
 - Verdicts reflect what you have watched. That is local and private, but it starts empty.
-- Shorts tiles carry no channel data. They are badged on the channel's own page, in search "Latest Shorts from X" shelves, or when the video was already seen elsewhere. Mixed Shorts shelves stay unbadged.
-- Localized disclosure text hasn't been verified. The language-independent article-ID match is the
-  primary check.
+- Shorts tiles carry no channel data. They are badged on the channel's own page, in search "Latest
+  Shorts from X" shelves, when the video was already seen elsewhere, or once a background check
+  (Active mode) has looked the Short up. Without Active mode, mixed Shorts shelves stay unbadged.
+- Detection works with a French YouTube UI, verified by the owner. That's thanks to the
+  language-independent help-article-ID match; the localized header *text* fallback itself remains
+  unverified.
 - YouTube markup changes. All selectors are listed in `docs/YOUTUBE-DOM.md` and kept in a few constants
   (`TILE_SELECTOR`, `THUMB`, `ITEM_ROOT`, `OWNER_TARGET`).
 
 ## Phase 2 hooks
 
-Your spec was cut off at "Phase 2 (only after phase 1". What's already in place:
+The original spec was cut off at "Phase 2 (only after phase 1", so phase 2 is still unspecified. Ask the
+owner for it before building anything. See [`docs/ROADMAP.md`](docs/ROADMAP.md). What's already in place:
 
 - `computeVerdict` already accepts `votes` and applies `minVotes` / `voteWeight`. Both are covered by
   tests and exposed in Options.
