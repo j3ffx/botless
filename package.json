@@ -4,13 +4,22 @@
   "private": true,
   "description": "Botless for YouTube — judges each channel as Probably Human / Probably AI / Inconclusive.",
   "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
   "scripts": {
     "build": "node scripts/build.mjs",
     "watch": "node scripts/build.mjs --watch",
     "icons": "node scripts/make-icons.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "check:dist": "node scripts/check-dist.mjs",
     "check:commits": "node scripts/check-commits.mjs",
+    "verify": "npm run typecheck && npm test && npm run build && npm run check:dist",
+    "package": "node scripts/package.mjs",
+    "release-notes": "node scripts/release-notes.mjs",
+    "preversion": "npm run verify",
+    "version": "node scripts/sync-version.mjs && git add src/static/manifest.json",
     "prepare": "node scripts/setup-hooks.mjs"
   },
   "devDependencies": {
