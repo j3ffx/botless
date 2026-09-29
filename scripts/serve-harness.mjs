@@ -19,4 +19,5 @@ createServer((req, res) => {
     res.statusCode = 404;
     res.end();
   }
-}).listen(8123, () => console.log('dev server on http://localhost:8123'));
+  // Loopback only: other devices on the network have no business reaching a dev server.
+}).listen(8123, '127.0.0.1', () => console.log('dev server on http://127.0.0.1:8123'));
