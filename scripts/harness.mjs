@@ -49,7 +49,9 @@ const shim = `
 `;
 
 const css = readFileSync('dist/content.css', 'utf8');
-const style = `(() => { const s = document.createElement('style'); s.textContent = ${JSON.stringify(css)}; document.head.append(s); })();`;
+// JSON.stringify leaves "<" and U+2028/U+2029 as is; escape them so the string is safe inside any script.
+const cssLiteral = JSON.stringify(css).replace(/</g, '\\u003C').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+const style = `(() => { const s = document.createElement('style'); s.textContent = ${cssLiteral}; document.head.append(s); })();`;
 const parts = [shim, style, readFileSync('dist/sw.js', 'utf8'), readFileSync('dist/bridge.js', 'utf8'), readFileSync('dist/content.js', 'utf8')];
 mkdirSync('dist-test', { recursive: true });
 writeFileSync('dist-test/harness.js', parts.join('\n;\n'));
