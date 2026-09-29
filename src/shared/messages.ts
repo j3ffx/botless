@@ -11,9 +11,7 @@ export type SwRequest =
   | { type: 'getChannel'; channelId: string }
   /** Background checks: ask for a slot under the global rate limit / daily cap before each request. */
   | { type: 'checkPermit' }
-  | { type: 'checkFailed'; status: number }
-  /** YouTube accepted "Don't recommend channel" for this channel (via its own menu). */
-  | { type: 'dontRecommended'; channelId: string; name?: string; auto: boolean };
+  | { type: 'checkFailed'; status: number };
 
 export type CheckPermit = { ok: true } | { ok: false; retryAfterMs: number; reason: 'off' | 'spacing' | 'cap' | 'backoff' };
 

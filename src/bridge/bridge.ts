@@ -8,10 +8,8 @@
  *      DOM attributes are shared across worlds, so the content script reads them from there.
  *   2. Reports the current page (video, channel, official AI disclosure) as a JSON-string CustomEvent.
  *      Strings are used because object `detail`s do not reliably cross the world boundary.
- *   3. When asked, picks YouTube's own "Don't recommend channel" in a tile's ⋮ menu (see the end of this file).
  */
 import { detectDisclosureInData, detectDisclosureInDom } from '../shared/disclosure';
-import { findFeedbackItem, type FeedbackKind } from '../shared/feedback';
 import {
   CHANNEL_ID_RE,
   channelIdFromChannelPage,
@@ -80,11 +78,6 @@ function stamp(el: AnyEl): boolean {
   const key = `${vid ?? ''}|${cid ?? ''}`;
   // A channel-less Shorts tile may gain a channel once the page info arrives, so keep retrying it.
   if (href && cid) el.dataset.botlessHref = href;
-  // Which of YouTube's own feedback actions can Botless trigger here? (signed in, feed tiles) Space-separated:
-  //   'channel' = "Don't recommend channel" (video tiles only); 'video' = "Not interested" (video and Shorts tiles).
-  const kinds = (['channel', 'video'] as const).filter((k) => findFeedbackItem(data, k));
-  if (kinds.length) el.dataset.botlessDontrec = kinds.join(' ');
-  else delete el.dataset.botlessDontrec;
   if (el.dataset.botlessKey === key) return false;
   if (vid) el.dataset.botlessVid = vid;
   else delete el.dataset.botlessVid;
@@ -144,7 +137,7 @@ function schedule(): void {
   }, 150);
 }
 
-const isOurs = (n: Node): boolean => n instanceof Element && (n.classList.contains('botless-badge') || n.classList.contains('botless-owner') || n.classList.contains('botless-dontrec'));
+const isOurs = (n: Node): boolean => n instanceof Element && (n.classList.contains('botless-badge') || n.classList.contains('botless-owner'));
 
 new MutationObserver((records) => {
   for (const r of records) {
@@ -249,82 +242,3 @@ document.addEventListener('botless:request-page', () => (lastInfo && lastInfo.ur
 // Safety net for the very first load in case yt-navigate-finish fired before we attached.
 window.addEventListener('load', () => setTimeout(() => lastInfo?.url !== location.href && readPage(), 1000));
 
-// ---- "Don't recommend channel", performed through YouTube's own menu (docs/YOUTUBE-DOM.md §6) ----
-//
-// We deliberately never call YouTube's feedback API ourselves: that would mean handling the user's sign-in cookies.
-// Instead we do exactly what the user would: open the tile's ⋮ menu and pick the item. YouTube authenticates the
-// request itself and shows its own "Undo" notice. The menu is invisible (html.botless-quiet-menu) for the few
-// hundred milliseconds this takes.
-
-// Video tiles: .ytLockupMetadataViewModelMenuButton; Shorts tiles: .shortsLockupViewModelHostOutsideMetadataMenu.
-const MENU_BUTTON = '[class*="MenuButton"] button, [class*="MetadataMenu"] button, ytd-menu-renderer yt-icon-button button, ytd-menu-renderer button';
-const MENU_ITEMS = 'yt-list-item-view-model, ytd-menu-service-item-renderer, tp-yt-paper-item';
-type DontRecResult = 'ok' | 'unavailable' | 'busy' | 'menu';
-let dontRecBusy = false;
-
-type Dropdown = Element & { opened?: boolean; close?: () => void };
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const openDropdowns = () => [...document.querySelectorAll<Dropdown>('tp-yt-iron-dropdown')].filter((d) => d.opened);
-
-/** Close menus with their own API: a synthetic Escape doesn't reliably close them (verified). */
-function closeMenus(): void {
-  for (const d of openDropdowns()) d.close?.();
-}
-
-function userIsBusy(): boolean {
-  const a = document.activeElement;
-  return (
-    dontRecBusy ||
-    document.hidden || // menus don't lay out in hidden tabs
-    openDropdowns().length > 0 ||
-    a instanceof HTMLInputElement ||
-    a instanceof HTMLTextAreaElement ||
-    (a as HTMLElement | null)?.isContentEditable === true
-  );
-}
-
-async function dontRecommend(videoId: string, kind: FeedbackKind): Promise<DontRecResult> {
-  const tile = [...document.querySelectorAll<AnyEl>('[data-botless-dontrec]')].find((el) => el.dataset.botlessVid === videoId);
-  const item = tile ? findFeedbackItem(rendererData(tile), kind) : null;
-  if (!tile || !item) return 'unavailable';
-  if (userIsBusy()) return 'busy';
-  const button = tile.querySelector<HTMLElement>(MENU_BUTTON);
-  if (!button) return 'menu';
-
-  dontRecBusy = true;
-  document.documentElement.classList.add('botless-quiet-menu');
-  try {
-    button.click();
-    for (let i = 0; i < 40; i++) {
-      await sleep(50);
-      // Only look inside the menu that just opened: YouTube keeps old menus' items in the DOM.
-      const match = openDropdowns()
-        .flatMap((d) => [...d.querySelectorAll<HTMLElement>(MENU_ITEMS)])
-        .find((el) => el.textContent?.trim() === item.title);
-      if (match) {
-        (match.querySelector<HTMLElement>('button, [role="menuitem"]') ?? match).click();
-        return 'ok';
-      }
-    }
-    closeMenus();
-    return 'menu';
-  } finally {
-    await sleep(200); // let the menu close before menus become visible again
-    document.documentElement.classList.remove('botless-quiet-menu');
-    dontRecBusy = false;
-  }
-}
-
-document.addEventListener('botless:dont-recommend', (e) => {
-  let videoId: unknown;
-  let kind: unknown;
-  try {
-    ({ videoId, kind } = JSON.parse(String((e as CustomEvent).detail)));
-  } catch {
-    return;
-  }
-  if (typeof videoId !== 'string' || (kind !== 'channel' && kind !== 'video')) return;
-  void dontRecommend(videoId, kind).then((result) =>
-    document.dispatchEvent(new CustomEvent('botless:dont-recommend-result', { detail: JSON.stringify({ videoId, result }) })),
-  );
-});

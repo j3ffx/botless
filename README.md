@@ -63,15 +63,13 @@ and your own "human" mark on a channel still wins.
 
 ## Active mode (opt-in)
 
-This is the second switch in the popup, off by default. It gates everything that goes beyond reading the
-page you're on:
-
-| Feature | What it does | Fine-tuning (Settings → Active mode) |
-|---|---|---|
-| **Background checks** | Looks up the AI label for videos on your screen, including Shorts | on by default under the gate; daily limit |
-| **"Don't recommend channel" / "Not interested"** | Uses YouTube's own feedback actions on *Probably AI* videos and Shorts, then hides that channel's other videos on the page | automatic by default; turn automatic off to get buttons instead |
+This is the second switch in the popup, off by default. It turns on **background checks** (below), which
+are the only thing in Botless that sends requests of its own. You can fine-tune them in Settings → Active
+mode (checks on/off, daily limit).
 
 Turn it off and Botless goes back to being fully local: it's less informed, but it doesn't talk to anyone.
+Botless never acts on your YouTube account (no "Don't recommend", no "Not interested"). To keep AI videos
+out of sight, set *Probably AI* to **Hide completely**.
 
 ### Background checks
 
@@ -111,20 +109,11 @@ Code: [`src/content/checker.ts`](src/content/checker.ts) (scheduling),
   is paused and a toast ("Skipping likely-AI video — Undo") counts down 3 seconds (configurable). Then it
   goes to the next video (or back, per your setting). **Undo** resumes playback and won't skip that
   video again in this tab.
-- **"Don't recommend channel" / "Not interested"** (needs Active mode; signed in): Botless
-  automatically tells YouTube **Don't recommend channel** for *Probably AI* videos in your home and
-  recommendation feeds, and **Not interested** for *Probably AI* Shorts (the only option YouTube offers
-  there). It works one at a time, a few seconds apart, and never twice for the same channel, so pressing
-  YouTube's Undo sticks. These are YouTube's own actions, so your **recommendations change on every
-  device, including the YouTube app**. YouTube replaces the video with its usual **Undo** notice, and
-  Botless immediately hides that channel's other videos on the page. If you turn automatic off in
-  Settings, you get a button under each *Probably AI* video instead. See
-  [How "Don't recommend" works](#how-dont-recommend-works).
 - **Popup:** exactly two switches (Botless on/off, Active mode, with today's check usage), today's
   count of flagged videos, the current channel's verdict and the reasons behind it, and Mark as AI / Mark
   as human. The community vote buttons are shown but disabled until phase 2.
-- **Options:** general (auto-skip), Active mode (background checks, daily limit, automatic
-  feedback; greyed out while the gate is off), actions, thresholds, cache lifetimes, the list of channels
+- **Options:** general (auto-skip), Active mode (background checks and their daily limit; greyed out
+  while the gate is off), actions, thresholds, cache lifetimes, the list of channels
   you marked (with Remove), and JSON export/import. Imports are validated field by field.
 - Works with YouTube's light and dark themes (`html[dark]`). The popup and options pages follow
   `prefers-color-scheme`.
@@ -144,29 +133,12 @@ needed.
 
 Channel IDs (`UC…`) exist only in YouTube's own JavaScript objects. The visible links show `@handles`,
 which owners can change. A normal content script can't read page JavaScript. So
-[`src/bridge/bridge.ts`](src/bridge/bridge.ts) runs inside the page and does three things: it copies IDs
-into `data-botless-*` attributes, it reports the current page's video, channel and disclosure through a
-DOM event, and, when asked, it picks "Don't recommend channel" in a tile's menu (below). It can't access
+[`src/bridge/bridge.ts`](src/bridge/bridge.ts) runs inside the page and does only two things: it copies IDs
+into `data-botless-*` attributes, and it reports the current page's video, channel and disclosure through a
+DOM event. It can't access
 `chrome.*`, doesn't touch storage, and makes no requests. Because it runs in the page, YouTube's own
 scripts could in principle see those attributes and events. They only contain facts YouTube already has
 (which video is on screen). **Your verdicts and marks never enter the page context.**
-
-### How "Don't recommend" works
-
-Botless never calls YouTube's feedback API itself: that would mean handling your sign-in cookies. Instead
-it does exactly what you would do. It opens the tile's ⋮ menu (kept invisible for about a quarter of a
-second) and picks the item by its icon: `REMOVE` is "Don't recommend channel", and `HIDE` is "Not
-interested" (used for Shorts, which don't offer the channel option). Matching on the icon works in any
-language. YouTube then sends the request with its own sign-in and shows its own Undo notice.
-
-**Channel or just this video?** "Don't recommend channel" is used only when the *channel* is Probably AI.
-When only one video is AI (it carries YouTube's label but its channel isn't judged AI), Botless uses "Not
-interested" on that video instead, so a mostly-human creator is never dismissed because of one AI video.
-
-It never runs while you're typing, while a menu is open, or in a background tab. It only exists where
-YouTube offers the item: signed in, mostly on the home and recommendation feeds (not in search results).
-Channels already done are listed under `dontrec` in storage, so Botless never repeats one. Details are in
-[`docs/YOUTUBE-DOM.md`](docs/YOUTUBE-DOM.md#6-dont-recommend-channel).
 
 ## Privacy
 
@@ -184,7 +156,6 @@ Channels already done are listed under `dontrec` in storage, so Botless never re
   | `vmap` | video → channel pairs, used to badge channel-less Shorts tiles | newest 3000 |
   | `stats` | today's flagged video IDs, for the counter | reset daily |
   | `checks` | number of background checks today, plus any pause | reset daily |
-  | `dontrec` | channels Botless told YouTube not to recommend, and when | kept (so it never repeats) |
 
 - **Clear observations** in Options wipes everything except your settings and marks.
 
@@ -218,7 +189,7 @@ src/
 **Performance.** The MutationObserver callback only sets a flag. Work runs at most every ~150 ms via
 `requestIdleCallback`. Each pass compares one `href` per tile and skips tiles that haven't changed, and
 DOM writes are batched in `requestAnimationFrame`. Nothing runs in hidden tabs. Storage writes go through
-the service worker in batches of up to 2 seconds. The bundles are about 52 KB in total, minified.
+the service worker in batches of up to 2 seconds. The bundles are about 46 KB in total, minified.
 
 ## Development
 

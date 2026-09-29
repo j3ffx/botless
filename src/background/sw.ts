@@ -10,7 +10,6 @@ import { checksOn, DEFAULT_SETTINGS } from '../shared/settings';
 import {
   getChannels,
   getCheckStats,
-  getDontRecs,
   getOverrides,
   getSettings,
   getVmap,
@@ -106,13 +105,6 @@ async function handle(msg: SwRequest): Promise<unknown> {
     case 'getChannel':
       return summary(msg.channelId);
 
-    case 'dontRecommended':
-      return serial(async () => {
-        const all = await getDontRecs();
-        all[msg.channelId] = { at: Date.now(), name: msg.name, auto: msg.auto };
-        await local.set({ [KEY.dontrec]: all });
-      });
-
     case 'checkPermit':
       return serial(() => checkPermit());
 
@@ -163,8 +155,12 @@ async function purge(): Promise<void> {
   });
 }
 
+/** Storage keys of removed features, deleted on update so nothing stale lingers on the user's device. */
+const OBSOLETE_KEYS = ['dontrec']; // the removed "Don't recommend channel" feature (2026-09-29)
+
 chrome.runtime.onInstalled.addListener(async ({ reason }) => {
   if (reason === 'install') await local.set({ [KEY.settings]: DEFAULT_SETTINGS });
+  if (reason === 'update') await local.remove(OBSOLETE_KEYS);
   await purge();
 });
 chrome.runtime.onStartup.addListener(() => void purge());

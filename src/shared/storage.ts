@@ -7,10 +7,9 @@
  *   vmap          Record<videoId, channelId>       learned mapping so channel-less Shorts tiles can be badged
  *   stats         DailyStats                       today's flagged-video counter
  *   checks        CheckStats                       background checks done today + backoff (opt-in feature)
- *   dontrec       Record<channelId, DontRecommend> channels Botless told YouTube not to recommend (never repeated)
  */
 import { normalizeSettings, type Settings } from './settings';
-import type { ChannelRecord, CheckStats, DailyStats, DontRecs, Overrides } from './types';
+import type { ChannelRecord, CheckStats, DailyStats, Overrides } from './types';
 
 export const KEY = {
   settings: 'settings',
@@ -18,7 +17,6 @@ export const KEY = {
   vmap: 'vmap',
   stats: 'stats',
   checks: 'checks',
-  dontrec: 'dontrec',
   channel: (id: string) => `c:${id}`,
 } as const;
 
@@ -53,11 +51,6 @@ export async function getVmap(): Promise<Record<string, string>> {
 
 export const today = (now = new Date()): string =>
   `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
-export async function getDontRecs(): Promise<DontRecs> {
-  const { dontrec } = await local().get(KEY.dontrec);
-  return (dontrec as DontRecs) ?? {};
-}
 
 export async function getCheckStats(): Promise<CheckStats> {
   const { checks } = await local().get(KEY.checks);

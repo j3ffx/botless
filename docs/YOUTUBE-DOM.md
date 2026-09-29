@@ -187,7 +187,12 @@ Observations:
 - Real-world example: We R Cinephiles' newest Short (`TCp_fT90F5s`) has **no** label, although several of
   its other videos do. That's why one label alone never makes a channel "Probably AI".
 
-## 6. "Don't recommend channel"
+## 6. "Don't recommend channel" (not used)
+
+> **Not used by Botless.** A feature built on these findings (buttons plus an automatic mode that picked YouTube's
+> own "Don't recommend channel" / "Not interested") was removed on 2026-09-29. It worked in a manual test, but
+> not reliably in practice, and hiding *Probably AI* videos covers the need. The notes stay here as a record of
+> how YouTube exposes these actions.
 
 Verified 2026-09-28 on a signed-in home feed with a French UI. A signed-out session doesn't have the item at
 all: logged-out menus only offer queue, save and share.
