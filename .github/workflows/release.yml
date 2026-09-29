@@ -1,4 +1,4 @@
-# Pushing a vN.N.N tag (made by `npm version patch|minor|major`, see CLAUDE.md → Releases) runs the full CI,
+# Pushing a vN.N.N tag (made by `npm version patch|minor|major`, see CLAUDE.md → CI and releases) runs the full CI,
 # then publishes a GitHub Release with the store-ready zip and notes built from the Conventional Commits.
 # Run it by hand (Actions → Release → Run workflow) for a dry run: same build, zip and notes, nothing published.
 name: Release
@@ -26,6 +26,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # release notes need the previous tag and its history
+          persist-credentials: false # gh gets its token from GH_TOKEN; nothing else needs git credentials
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
@@ -45,10 +46,15 @@ jobs:
         with:
           name: botless-dist
           path: dist/
-      - run: npm run package -- "botless-${{ steps.version.outputs.version }}.zip"
+      - run: npm run package -- "botless-$VERSION.zip"
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
       - name: Release notes
+        # Values reach the shell through env, never by pasting ${{ }} into the script (script injection).
+        env:
+          REF: ${{ github.ref_type == 'tag' && github.ref_name || 'HEAD' }}
         run: |
-          node scripts/release-notes.mjs ${{ github.ref_type == 'tag' && github.ref_name || 'HEAD' }} > notes.md
+          node scripts/release-notes.mjs "$REF" > notes.md
           cat notes.md >> "$GITHUB_STEP_SUMMARY"
 
       # Releases are immutable once published (repo setting): neither the zip nor the tag can change afterwards.
