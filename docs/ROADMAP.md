@@ -24,8 +24,8 @@ rejected on purpose.
 
 ## Open items
 
-- **Phase 2 is unspecified.** The original spec was cut off at "Phase 2 (only after phase 1". Hooks exist
-  for community votes (README → Phase 2 hooks). Agree on a spec before building it.
+- **Phase 2 is unspecified.** Hooks exist for community votes (README → Phase 2 hooks). Agree on a spec
+  before building it.
 - **Publishing.** Not on the Chrome Web Store yet. That needs a developer account, store listing and
   screenshots, and a privacy statement matching README → Privacy (EU "trader" rules apply if published
   commercially).

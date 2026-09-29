@@ -4,8 +4,7 @@
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 
 A Manifest V3 Chrome extension that judges each **channel** as **Probably Human**, **Probably AI** or
-**Inconclusive**, then badges, fades, hides or auto-skips that channel's videos. It is the YouTube
-counterpart of SkipIfFake.
+**Inconclusive**, then badges, fades, hides or auto-skips that channel's videos.
 
 Phase 1 runs **on your device**. It has no analytics and no servers. The popup has two switches:
 **Botless on/off**, and **[Active mode](#active-mode-opt-in)**. The second one is off by
@@ -250,8 +249,8 @@ Dev-only helpers (not shipped):
 
 ## Phase 2 hooks
 
-The original spec was cut off at "Phase 2 (only after phase 1", so phase 2 is still unspecified. Agree on a
-spec before building anything. See [`docs/ROADMAP.md`](docs/ROADMAP.md). What's already in place:
+Phase 2 isn't specified yet. It's expected to add community votes, and it will be designed and documented
+before anything is built. See [`docs/ROADMAP.md`](docs/ROADMAP.md). What's already in place:
 
 - `computeVerdict` already accepts `votes` and applies `minVotes` / `voteWeight`. Both are covered by
   tests and exposed in Options.
