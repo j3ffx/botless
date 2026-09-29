@@ -1,0 +1,30 @@
+# Pull requests are squash-merged, so the PR title becomes the commit message on main. Check it follows
+# Conventional Commits like every other commit. A separate workflow so that editing the title re-runs only
+# this check, not the whole CI.
+name: PR title
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  title:
+    name: PR title
+    # Dependabot's titles are generated and always capitalise "Bump" (see scripts/check-commits.mjs → BOTS).
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: Check the title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: node scripts/check-commits.mjs --title "$TITLE"

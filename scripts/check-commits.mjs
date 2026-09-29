@@ -1,5 +1,6 @@
 // Enforces Conventional Commits (CLAUDE.md → Commits). Zero dependencies.
 //   node scripts/check-commits.mjs --file .git/COMMIT_EDITMSG   one message (the commit-msg hook)
+//   node scripts/check-commits.mjs --title "feat: …"            a pull request title (it becomes the squash commit)
 //   node scripts/check-commits.mjs <from>..<to>                 every non-merge commit in a range (CI)
 //   node scripts/check-commits.mjs                              commits on this branch not yet on origin/main
 import { execFileSync } from 'node:child_process';
@@ -85,6 +86,13 @@ function main(argv) {
     const problems = lint(message, { allowFixup: true });
     if (!problems.length) return 0;
     console.error(`✖ Commit message rejected (see CLAUDE.md → Commits):\n  ${problems.join('\n  ')}\n\n  ${message.split('\n')[0]}`);
+    return 1;
+  }
+  if (argv[0] === '--title') {
+    const title = argv[1] ?? '';
+    const problems = lint(title);
+    if (!problems.length) return console.log(`PR title OK: ${title}`), 0;
+    console.error(`✖ PR title rejected. It becomes the commit message on main (see CLAUDE.md → Commits):\n  ${problems.join('\n  ')}\n\n  ${title}`);
     return 1;
   }
   const commits = commitsIn(argv[0] ?? 'origin/main..HEAD');
