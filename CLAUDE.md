@@ -11,11 +11,17 @@ MV3 Chrome extension (TypeScript, esbuild, vitest; no framework). Read first:
 
 ```bash
 npm run build        # -> dist/ (load unpacked in Chrome)
-npx tsc --noEmit     # typecheck
-npx vitest run       # unit tests
+npm run typecheck    # tsc --noEmit
+npm test             # vitest: unit tests + tests/invariants.test.ts (the invariants below)
+npm run verify       # all of the above + check:dist (what's shipped: files, no eval/source maps, size budget)
+npm run smoke        # dist/ in real Chrome, offline (needs CHROME_PATH, see below)
 ```
 
-Run typecheck, tests and build before every commit.
+Run `npm run verify` before every commit. `npm install` also points git at `.githooks/`, whose
+`commit-msg` hook rejects messages that don't follow the rules below.
+
+The smoke test needs Chrome for Testing (branded Chrome ignores `--load-extension`):
+`npx @puppeteer/browsers install chrome@stable`, then set `CHROME_PATH` to the path it prints.
 
 ## Commits
 
@@ -31,14 +37,32 @@ BREAKING CHANGE: … (when relevant)
 
 - **Types:** `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `build`, `ci`, `chore`, `style`, `revert`.
 - **Scope** is optional. When you use one, name the area: `popup`, `options`, `content`, `bridge`, `sw`,
-  `checker`, `scoring`, `shared`, `docs`.
+  `checker`, `scoring`, `shared`, `manifest`, `docs` (plus `deps`, `deps-dev`, `release` for tooling).
+  `scripts/check-commits.mjs` holds the authoritative list and is what CI and the hook enforce.
 - Keep the header to 72 characters or fewer. Mark breaking changes with `!` and/or a `BREAKING CHANGE:`
   footer.
 - Keep commits small and logical, one type per commit. If a change needs two types, split it into two
   commits.
 - Commits before `ce9d981` predate this rule. Don't rewrite them.
 
+## CI and releases
+
+- **CI** (`.github/workflows/ci.yml`) runs on every push to `main` and every PR: typecheck, tests, build,
+  `check:dist`, the Chrome smoke test on the exact built files, and the commit-message check. The built
+  extension is kept 14 days as the `botless-dist` artifact (unzip it, then load it unpacked).
+- **Release:** `npm version patch|minor|major` re-runs `verify`, bumps `package.json` *and*
+  `manifest.json`, commits `chore(release): X.Y.Z` and tags `vX.Y.Z`. Then
+  `git push --follow-tags`. The tag runs `.github/workflows/release.yml`: full CI again, then a GitHub
+  Release with `botless-X.Y.Z.zip` (the file to upload to the Chrome Web Store) and notes grouped by
+  commit type. Chrome only accepts plain `X.Y.Z` versions: no `-beta` suffixes. Run the Release workflow
+  by hand for a dry run that publishes nothing.
+- `npm run release-notes` previews the notes of the next release.
+- **Dependabot** opens grouped weekly PRs for npm and monthly ones for Actions.
+
 ## Invariants (discuss before changing)
+
+`tests/invariants.test.ts` and the smoke test enforce most of these in CI. If you change one on purpose,
+discuss it first, then update the test in the same commit.
 
 - **Privacy.** With "Active mode" off (the default), Botless makes no requests of its own. The only `fetch`
   calls live in `src/content/checker.ts`, go to `www.youtube.com` with `credentials: "omit"`, and are
@@ -48,8 +72,8 @@ BREAKING CHANGE: … (when relevant)
   channel" feature was built and then removed (see ROADMAP).
 - **Popup: at most two switches:** Botless on/off, and Active mode. Anything else goes in Settings.
 - The UI never claims certainty: "Probably AI / Probably Human / Inconclusive".
-- Pure logic stays in `src/shared/*` (no DOM, no `chrome.*`) with unit tests. The scoring weights live
-  only in `src/shared/scoring.ts`.
+- Pure logic stays in `src/shared/*` (no DOM, no `chrome.*`; `messages.ts` and `storage.ts` are the only
+  `chrome.*` wrappers there) with unit tests. The scoring weights live only in `src/shared/scoring.ts`.
 - The service worker is the single writer for channel data (`serial()` queue). Content scripts read
   storage and message the service worker.
 - MAIN-world `src/bridge/bridge.ts`: no `chrome.*`, no storage, no network. It passes data to the isolated

@@ -16,6 +16,10 @@ rejected on purpose.
 | 2026-09-29 | The popup has **at most 2 switches**: Botless on/off, and **Active mode**. Finer options live in Settings. | Keeps the popup simple: one switch for "on", one for "may talk to YouTube". |
 | 2026-09-29 | The second switch is named **"Active mode"**, off by default. Off = fully local, no requests of its own. | Clearer than the earlier "Connect to YouTube". Off by default for privacy. |
 | 2026-09-29 | **Removed** "Don't recommend channel" / "Not interested" (acting through YouTube's ⋮ menu, with buttons and an auto mode). | It acted regardless of the display mode and wasn't reliable in real use. "Hide completely" covers the need. **Don't reintroduce actions on the user's YouTube account without discussing it first.** Research kept in `docs/YOUTUBE-DOM.md` §6. |
+| 2026-09-29 | Commits follow **Conventional Commits**, enforced by a git hook and CI. | Readable history, and release notes can be generated from it. |
+| 2026-09-29 | Releases are **tag-driven** (`npm version` + `git push --follow-tags`), not release-please. | Works with direct pushes to `main`, and needs no extra repo settings (release-please needs Actions allowed to open PRs). |
+| 2026-09-29 | CI tooling is **zero-dependency Node scripts** (zip, commit lint, notes). The only new dev dependency is `puppeteer-core`, for the smoke test. | Fewer packages to audit for a privacy-focused extension. |
+| 2026-09-29 | The smoke test runs in **Chrome for Testing**, fully offline (every request is intercepted), and fails on any request while Active mode is off. | Branded Chrome ignores `--load-extension` since v137. Offline keeps CI deterministic and never touches real YouTube. |
 
 ## Open items
 

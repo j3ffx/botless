@@ -196,10 +196,17 @@ the service worker in batches of up to 2 seconds. The bundles are about 46 KB in
 ```bash
 npm run build       # production build -> dist/
 npm run watch       # rebuild on change (with inline source maps)
-npm test            # vitest: scoring, disclosure, extraction, cache/TTL, checks, settings, import, orphaned-script
+npm test            # vitest: scoring, disclosure, extraction, cache/TTL, checks, settings, import,
+                    # orphaned-script, commit lint, and the project invariants (privacy, purity, manifest)
 npm run typecheck
+npm run verify      # typecheck + tests + build + dist/ check: run before every commit
+npm run smoke       # loads dist/ in Chrome for Testing, offline (needs CHROME_PATH)
+npm run package     # dist/ -> botless-<version>.zip (store upload)
 npm run icons       # regenerate PNG icons
 ```
+
+CI runs all of this on every push and pull request. Releases are cut with `npm version` and published
+from the tag by GitHub Actions. Details are in `CLAUDE.md` → CI and releases.
 
 Dev-only helpers (not shipped):
 
