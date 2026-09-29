@@ -33,7 +33,7 @@
   },
   "devDependencies": {
     "@types/chrome": "^0.3.4",
-    "@types/node": "^22.20.4",
+    "@types/node": "^26.6.3",
     "esbuild": "^0.28.2",
     "happy-dom": "^20.14.5",
     "oxc-parser": "^0.152.0",
