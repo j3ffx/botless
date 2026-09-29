@@ -69,8 +69,9 @@ The built-in browser pane **cannot load extensions**. Use these instead:
    `requestAnimationFrame` doesn't run (Botless applies badges in rAF), YouTube doesn't lay out menus or
    the Shorts overlay, and screenshots time out or show stale frames. Check the DOM with JS instead, or
    ask the owner to test in real Chrome (docs/TESTING.md).
-4. The agent can't open `accounts.google.com`. The owner signed into YouTube in the pane themselves once;
-   anything there is their real account, so read only, and ask before any action.
+4. The agent can't open `accounts.google.com`, and the pane is normally signed out. Signed-in-only data
+   (personalized home, ⋮ feedback items) needs the owner to sign in there themselves. If they do, it's
+   their real account: read only, and ask before any action.
 
 ## Shell pitfalls (Windows, Git Bash + PowerShell 5.1)
 
