@@ -1,10 +1,10 @@
 /// <reference types="node" />
 // Guards the invariants listed in CLAUDE.md, so that breaking one fails CI instead of relying on review.
-// It reads the sources with the TypeScript parser, so comments and strings never cause false matches.
+// It parses the sources (oxc-parser, standard ESTree output), so comments and strings never cause false matches.
 // If a test here fails on purpose, discuss the change first (CLAUDE.md), then update the test.
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import ts from 'typescript';
+import { parseSync } from 'oxc-parser';
 import { describe, expect, it } from 'vitest';
 
 const SRC = 'src';
@@ -18,22 +18,40 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-const parse = (file: string) => ts.createSourceFile(file, read(file), ts.ScriptTarget.Latest, true);
+/** A loosely typed ESTree node: the checks below only read a few well-known fields. */
+type Node = { type: string; start: number; [key: string]: any };
+const isNode = (v: unknown): v is Node => !!v && typeof v === 'object' && typeof (v as Node).type === 'string';
 
-function walk(node: ts.Node, visit: (n: ts.Node) => void): void {
-  visit(node);
-  node.forEachChild((c) => walk(c, visit));
+const parsed = new Map<string, { program: Node; source: string }>();
+function parse(file: string): { program: Node; source: string } {
+  if (!parsed.has(file)) {
+    const source = read(file);
+    const { program, errors } = parseSync(file, source);
+    if (errors.length) throw new Error(`${file}: ${errors[0]!.message}`);
+    parsed.set(file, { program: program as unknown as Node, source });
+  }
+  return parsed.get(file)!;
 }
+
+/** Visits every node with its parent and the key it hangs from. */
+function walk(node: Node, visit: (n: Node, parent: Node | null, key: string) => void, parent: Node | null = null, key = ''): void {
+  visit(node, parent, key);
+  for (const [k, v] of Object.entries(node)) {
+    if (Array.isArray(v)) for (const c of v) isNode(c) && walk(c, visit, node, k);
+    else if (isNode(v)) walk(v, visit, node, k);
+  }
+}
+
+const lineOf = (file: string, n: Node) => parse(file).source.slice(0, n.start).split('\n').length;
 
 /** Free identifiers the file refers to (`chrome`, `fetch`, `document`…), ignoring property names like `x.fetch`. */
 function globalsUsed(file: string): Set<string> {
   const used = new Set<string>();
-  walk(parse(file), (n) => {
-    if (!ts.isIdentifier(n)) return;
-    const p = n.parent;
-    if (ts.isPropertyAccessExpression(p) && p.name === n) return;
-    if ((ts.isPropertyAssignment(p) || ts.isPropertySignature(p) || ts.isPropertyDeclaration(p) || ts.isMethodDeclaration(p)) && p.name === n) return;
-    used.add(n.text);
+  walk(parse(file).program, (n, parent, key) => {
+    if (n.type !== 'Identifier' || !parent) return;
+    if (key === 'property' && parent.type === 'MemberExpression' && !parent.computed) return;
+    if (key === 'key' && !parent.computed && /^(Property|PropertyDefinition|MethodDefinition|TSPropertySignature|TSMethodSignature)$/.test(parent.type)) return;
+    used.add(n.name);
   });
   return used;
 }
@@ -41,8 +59,8 @@ function globalsUsed(file: string): Set<string> {
 /** Property names accessed anywhere in the file (`navigator.sendBeacon` -> `sendBeacon`). */
 function propertiesUsed(file: string): Set<string> {
   const used = new Set<string>();
-  walk(parse(file), (n) => {
-    if (ts.isPropertyAccessExpression(n)) used.add(n.name.text);
+  walk(parse(file).program, (n) => {
+    if (n.type === 'MemberExpression' && !n.computed && n.property.type === 'Identifier') used.add(n.property.name);
   });
   return used;
 }
@@ -63,30 +81,31 @@ describe('privacy: network access', () => {
   });
 
   it('every fetch goes to https://www.youtube.com/ without cookies', () => {
-    const calls: ts.CallExpression[] = [];
-    walk(parse(CHECKER), (n) => {
-      if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === 'fetch') calls.push(n);
+    const calls: Node[] = [];
+    walk(parse(CHECKER).program, (n) => {
+      if (n.type === 'CallExpression' && n.callee.type === 'Identifier' && n.callee.name === 'fetch') calls.push(n);
     });
     expect(calls.length).toBeGreaterThan(0);
     for (const call of calls) {
-      const [url, init] = call.arguments;
+      const [url, init] = call.arguments as Node[];
       const urlText =
-        url && (ts.isStringLiteral(url) || ts.isNoSubstitutionTemplateLiteral(url)) ? url.text
-        : url && ts.isTemplateExpression(url) ? url.head.text
+        url?.type === 'Literal' && typeof url.value === 'string' ? url.value
+        : url?.type === 'TemplateLiteral' ? url.quasis[0].value.cooked
         : '';
-      expect(urlText, `fetch URL at ${CHECKER}:${line(call)}`).toMatch(/^https:\/\/www\.youtube\.com\//);
+      const where = `${CHECKER}:${lineOf(CHECKER, call)}`;
+      expect(urlText, `fetch URL at ${where}`).toMatch(/^https:\/\/www\.youtube\.com\//);
       const credentials =
-        init && ts.isObjectLiteralExpression(init)
-          ? init.properties.find((p): p is ts.PropertyAssignment => ts.isPropertyAssignment(p) && p.name.getText() === 'credentials')
+        init?.type === 'ObjectExpression'
+          ? (init.properties as Node[]).find((p) => p.type === 'Property' && !p.computed && p.key.name === 'credentials')
           : undefined;
-      expect(credentials?.initializer.getText(), `credentials at ${CHECKER}:${line(call)}`).toMatch(/^['"]omit['"]$/);
+      expect(credentials?.value.value, `credentials at ${where}`).toBe('omit');
     }
   });
 });
 
 describe('MAIN-world bridge', () => {
-  const g = globalsUsed('src/bridge/bridge.ts');
   it('has no chrome.*, no storage and no network', () => {
+    const g = globalsUsed('src/bridge/bridge.ts');
     expect([...g].filter((x) => ['chrome', ...STORAGE_GLOBALS, ...NETWORK_GLOBALS].includes(x))).toEqual([]);
   });
 });
@@ -105,9 +124,9 @@ describe('channel IDs', () => {
   it('every /UC…/ regex is anchored (a free-floating one matches tracking params)', () => {
     const loose: string[] = [];
     for (const f of files)
-      walk(parse(f), (n) => {
-        if (ts.isRegularExpressionLiteral(n) && /UC[.[\\]/.test(n.text) && !/^\/\^.*\$\/[a-z]*$/.test(n.text))
-          loose.push(`${f}:${line(n)} ${n.text}`);
+      walk(parse(f).program, (n) => {
+        const pattern: string | undefined = n.type === 'Literal' ? n.regex?.pattern : undefined;
+        if (pattern && /UC[.[\\]/.test(pattern) && !/^\^.*\$$/.test(pattern)) loose.push(`${f}:${lineOf(f, n)} /${pattern}/`);
       });
     expect(loose).toEqual([]);
   });
@@ -138,8 +157,3 @@ describe('popup', () => {
     expect(switches.length).toBeLessThanOrEqual(2);
   });
 });
-
-function line(n: ts.Node): number {
-  const sf = n.getSourceFile();
-  return sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1;
-}
