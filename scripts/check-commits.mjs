@@ -15,6 +15,9 @@ export const SCOPES = [
 const MAX_HEADER = 72;
 // Commits up to and including this one predate the rule and are never checked.
 const RULE_START = 'ce9d981';
+// Dependabot's messages are generated ("build(deps-dev): Bump x from 1 to 2") and always capitalise "Bump".
+// Their type and scope come from .github/dependabot.yml. Checking them would only block its PRs.
+const BOTS = ['49699333+dependabot[bot]@users.noreply.github.com'];
 
 const HEADER = /^(?<type>[a-z]+)(?:\((?<scope>[^()\s]+)\))?(?<bang>!)?: (?<desc>.+)$/;
 
@@ -62,16 +65,17 @@ function commitsIn(range) {
   // New branch (all-zero "before"), or a force-push that dropped the old tip: check the newest commit only.
   if (from && (/^0+$/.test(from) || !exists(from))) from = `${to}~1`;
   if (from && !exists(from)) from = null; // `to` is a root commit
-  const args = ['log', '--no-merges', '--format=%H%x00%B%x1e', from ? `${from}..${to}` : `${to}`];
+  const args = ['log', '--no-merges', '--format=%H%x00%ae%x00%B%x1e', from ? `${from}..${to}` : `${to}`];
   if (exists(RULE_START)) args.push(`^${RULE_START}`);
   return git(...args)
     .split('\x1e')
     .map((s) => s.trim())
     .filter(Boolean)
     .map((s) => {
-      const [sha, body] = s.split('\x00');
-      return { sha: sha.slice(0, 7), message: body.trim() };
-    });
+      const [sha, author, body] = s.split('\x00');
+      return { sha: sha.slice(0, 7), author, message: body.trim() };
+    })
+    .filter((c) => !BOTS.includes(c.author));
 }
 
 function main(argv) {
