@@ -221,7 +221,7 @@ Dev-only helpers (not shipped):
 - Shorts player: channel ID and disclosure detected from the `yt-navigate-finish` data.
 - Everything above, plus the Shorts overlay pill, auto-skip to the next video in a playlist (signed
   in), "Latest Shorts from X" badging, background checks, the popup and Settings, both themes and
-  scrolling performance, was then confirmed by the owner in real Chrome, signed in, with YouTube in
+  scrolling performance, was then confirmed manually in real Chrome, signed in, with YouTube in
   French. The full manual test plan is in [`docs/TESTING.md`](docs/TESTING.md).
 
 ## Known limitations
@@ -231,7 +231,7 @@ Dev-only helpers (not shipped):
 - Shorts tiles carry no channel data. They are badged on the channel's own page, in search "Latest
   Shorts from X" shelves, when the video was already seen elsewhere, or once a background check
   (Active mode) has looked the Short up. Without Active mode, mixed Shorts shelves stay unbadged.
-- Detection works with a French YouTube UI, verified by the owner. That's thanks to the
+- Detection works with a French YouTube UI (verified manually). That's thanks to the
   language-independent help-article-ID match; the localized header *text* fallback itself remains
   unverified.
 - YouTube markup changes. All selectors are listed in `docs/YOUTUBE-DOM.md` and kept in a few constants
@@ -239,8 +239,8 @@ Dev-only helpers (not shipped):
 
 ## Phase 2 hooks
 
-The original spec was cut off at "Phase 2 (only after phase 1", so phase 2 is still unspecified. Ask the
-owner for it before building anything. See [`docs/ROADMAP.md`](docs/ROADMAP.md). What's already in place:
+The original spec was cut off at "Phase 2 (only after phase 1", so phase 2 is still unspecified. Agree on a
+spec before building anything. See [`docs/ROADMAP.md`](docs/ROADMAP.md). What's already in place:
 
 - `computeVerdict` already accepts `votes` and applies `minVotes` / `voteWeight`. Both are covered by
   tests and exposed in Options.

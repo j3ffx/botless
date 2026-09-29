@@ -3,8 +3,8 @@
 The extension can only be fully tested in a **real Chrome** with the unpacked build loaded. Automated tests
 (`npm test`) cover the pure logic. Selectors and flows need YouTube itself.
 
-The owner runs this plan in their own Chrome, **signed in, with YouTube's UI in French**. All steps passed on
-2026-09-28/29. Rerun the relevant steps after any change to the bridge, the content script or the selectors.
+Last full pass: 2026-09-29 (Chrome, signed in to YouTube, French UI): all steps passed. Rerun the relevant
+steps after any change to the bridge, the content script or the selectors.
 
 ## Setup
 
@@ -69,7 +69,7 @@ Search `We R Cinephiles` for a "Latest Shorts from X" shelf. Their Shorts tab is
 - `youtube.com/feed/history` shows none of the checked videos (requests are sent without cookies).
 - Turning Active mode off stops the counter.
 
-## Agent-side verification (no real Chrome)
+## Quicker checks without installing
 
-A coding agent can't load the extension in the built-in browser pane. See `CLAUDE.md` → *Verifying changes*
-for the harness and preview workflow and its pitfalls.
+See `CLAUDE.md` → *Verifying changes without installing the extension* (live harness, popup and options
+previews).

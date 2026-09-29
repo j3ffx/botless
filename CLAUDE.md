@@ -1,11 +1,11 @@
-# Botless for YouTube — notes for coding agents
+# Botless for YouTube — contributor notes
 
 MV3 Chrome extension (TypeScript, esbuild, vitest; no framework). Read first:
 
 - `README.md` covers what it does, the verdict model, permissions, privacy and architecture.
 - `docs/YOUTUBE-DOM.md` covers every YouTube selector and data path, verified live, with dates.
 - `docs/TESTING.md` is the manual test plan, with real test video IDs.
-- `docs/ROADMAP.md` lists decisions already made (with reasons), rejected and removed features, and open items.
+- `docs/ROADMAP.md` lists decisions already made (with reasons), removed features, and open items.
 
 ## Commands
 
@@ -13,27 +13,19 @@ MV3 Chrome extension (TypeScript, esbuild, vitest; no framework). Read first:
 npm run build        # -> dist/ (load unpacked in Chrome)
 npx tsc --noEmit     # typecheck
 npx vitest run       # unit tests
-node scripts/previews.mjs && node scripts/harness.mjs   # dev-only previews / live harness -> dist-test/
 ```
 
-Run typecheck, tests and build before every commit.
+Run typecheck, tests and build before every commit. Keep commits small and logical, with messages that
+explain *why*.
 
-## Conventions
-
-- **Git identity:** this repo uses the owner's *personal* email, set repo-locally
-  (`48691129+j3ffx@users.noreply.github.com`).
-- Remote `origin` is `github.com/j3ffx/botless` (private), branch `main`. The owner allows committing and
-  pushing directly once checks pass. Make small logical commits with explanatory messages.
-- The owner writes in English, uses YouTube in French, and tests in their own Chrome, signed in.
-
-## Invariants (don't break without asking the owner)
+## Invariants (discuss before changing)
 
 - **Privacy.** With "Active mode" off (the default), Botless makes no requests of its own. The only `fetch`
   calls live in `src/content/checker.ts`, go to `www.youtube.com` with `credentials: "omit"`, and are
   rate-limited by the service worker (`checkPermit`). The service worker and the MAIN-world bridge never
   fetch.
-- **Never act on the user's YouTube account** (feedback, likes, subscriptions…). "Don't recommend channel"
-  was built and then removed at the owner's request (see ROADMAP).
+- **Never act on the user's YouTube account** (feedback, likes, subscriptions…). A "Don't recommend
+  channel" feature was built and then removed (see ROADMAP).
 - **Popup: at most two switches:** Botless on/off, and Active mode. Anything else goes in Settings.
 - The UI never claims certainty: "Probably AI / Probably Human / Inconclusive".
 - Pure logic stays in `src/shared/*` (no DOM, no `chrome.*`) with unit tests. The scoring weights live
@@ -48,35 +40,20 @@ Run typecheck, tests and build before every commit.
 - When a selector or data path changes, verify it on live YouTube first, then update
   `docs/YOUTUBE-DOM.md`.
 
-## Verifying changes as an agent
-
-The built-in browser pane **cannot load extensions**. Use these instead:
+## Verifying changes without installing the extension
 
 1. **Live harness:** `npm run build && node scripts/harness.mjs` produces `dist-test/harness.js` (an
-   in-memory `chrome.*` shim + sw + bridge + content). YouTube's CSP and local-network rules block
-   fetching it from localhost, so **paste the file's contents into the JS tool**. That evaluation bypasses
-   the CSP. Seed storage first with `window.__BOTLESS_SEED__ = { overrides: {...}, settings: {...} }`.
-   The scripts survive SPA navigation. To navigate in-app without a reload:
+   in-memory `chrome.*` shim + service worker + bridge + content script). Paste it into a YouTube tab's
+   DevTools console; YouTube's CSP blocks loading it from a local server. Seed storage first with
+   `window.__BOTLESS_SEED__ = { overrides: {...}, settings: {...} }`. The scripts survive YouTube's SPA
+   navigation. To navigate in-app without a reload:
    ```js
    document.querySelector('ytd-app').dispatchEvent(new CustomEvent('yt-navigate', { bubbles: true, composed: true,
      detail: { endpoint: { commandMetadata: { webCommandMetadata: { url: '/watch?v=ID', webPageType: 'WEB_PAGE_TYPE_WATCH', rootVe: 3832 } }, watchEndpoint: { videoId: 'ID' } } } }));
    ```
-2. **Popup / options previews:** `node scripts/previews.mjs`, then start the `harness` launch config
-   (`.claude/launch.json`, port 8123) and open `http://localhost:8123/dist-test/popup.html` or
-   `options.html`. Opening them via `file://` doesn't work: the pane loads them as `data:` snapshots, so
-   relative scripts break.
-3. **Hidden-pane pitfalls:** when the pane isn't displayed, `document.hidden` is true. Then
-   `requestAnimationFrame` doesn't run (Botless applies badges in rAF), YouTube doesn't lay out menus or
-   the Shorts overlay, and screenshots time out or show stale frames. Check the DOM with JS instead, or
-   ask the owner to test in real Chrome (docs/TESTING.md).
-4. The agent can't open `accounts.google.com`, and the pane is normally signed out. Signed-in-only data
-   (personalized home, ⋮ feedback items) needs the owner to sign in there themselves. If they do, it's
-   their real account: read only, and ask before any action.
-
-## Shell pitfalls (Windows, Git Bash + PowerShell 5.1)
-
-- Bash heredocs containing JS template literals (backticks, `${}`) have been truncated silently. Write
-  files with the editor tool, or run `node -` scripts that use plain string replacements. Check the
-  result with `grep`.
-- Renaming or deleting the working directory fails while a session (or its hidden terminal) has it as
-  cwd.
+2. **Popup / options previews:** `node scripts/previews.mjs && node scripts/serve-harness.mjs`, then open
+   `http://localhost:8123/dist-test/popup.html` or `options.html`. They're backed by a fake `chrome.*` with
+   seeded data. Serve them over HTTP: opening them via `file://` can break the relative scripts.
+3. **Background tabs:** browsers pause `requestAnimationFrame` in hidden tabs, and Botless applies badges
+   in rAF. YouTube also skips laying out menus and the Shorts overlay there. Test in a visible tab.
+4. The full behaviour can only be confirmed in real Chrome with `dist/` loaded unpacked (`docs/TESTING.md`).

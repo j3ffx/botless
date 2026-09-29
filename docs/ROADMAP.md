@@ -9,23 +9,23 @@ rejected on purpose.
 |---|---|---|
 | 2026-09-28 | Judge the **channel**. A video that itself carries YouTube's AI label is also AI on its own tile or page, but that doesn't change the channel verdict. | Spec: channel verdicts. The per-video rule was added because AI Shorts polluted feeds while their channels were still unjudged. |
 | 2026-09-28 | Auto-dubbed videos (`answer/15569972`) never count as AI. | They share the "How this was made" section. Counting them would flag many ordinary channels (4 of 5 in one sample). |
-| 2026-09-28 | Match the label by help-article ID first, text second. | Language independent. Works with the owner's French UI. |
+| 2026-09-28 | Match the label by help-article ID first, text second. | Language independent. Verified with a French YouTube UI. |
 | 2026-09-28 | Don't use the YouTube Data API. | Needs a key, network and permissions. The page already has the label (`docs/YOUTUBE-DOM.md` §4). |
 | 2026-09-28 | Background checks go to youtube.com only, **without cookies**, 3 s apart (fixed), with a daily limit (setting, default 150). | Cookieless requests can't touch the account or history. Request *rate* is what bot detection reacts to, so the spacing isn't user-tunable. 150 is a cautious guess: YouTube publishes no limit. |
 | 2026-09-28 | One labeled video never makes a channel "Probably AI" (needs 2 of 2 by default). Checks confirm a first label with one more video from the channel's RSS feed. | The newest We R Cinephiles Short had no label although others did. |
-| 2026-09-29 | The popup has **at most 2 switches**: Botless on/off, and **Active mode**. Finer options live in Settings. | Owner's explicit requirement. |
-| 2026-09-29 | The second switch is named **"Active mode"**, off by default. Off = fully local, no requests of its own. | Owner rejected "Connect to YouTube". Off by default for privacy. |
-| 2026-09-29 | **Removed** "Don't recommend channel" / "Not interested" (acting through YouTube's ⋮ menu, with buttons and an auto mode). | It acted regardless of the display mode and didn't work reliably for the owner. "Hide completely" covers the need. **Don't reintroduce actions on the user's YouTube account without asking the owner.** Research kept in `docs/YOUTUBE-DOM.md` §6. |
+| 2026-09-29 | The popup has **at most 2 switches**: Botless on/off, and **Active mode**. Finer options live in Settings. | Keeps the popup simple: one switch for "on", one for "may talk to YouTube". |
+| 2026-09-29 | The second switch is named **"Active mode"**, off by default. Off = fully local, no requests of its own. | Clearer than the earlier "Connect to YouTube". Off by default for privacy. |
+| 2026-09-29 | **Removed** "Don't recommend channel" / "Not interested" (acting through YouTube's ⋮ menu, with buttons and an auto mode). | It acted regardless of the display mode and wasn't reliable in real use. "Hide completely" covers the need. **Don't reintroduce actions on the user's YouTube account without discussing it first.** Research kept in `docs/YOUTUBE-DOM.md` §6. |
 
 ## Open items
 
 - **Phase 2 is unspecified.** The original spec was cut off at "Phase 2 (only after phase 1". Hooks exist
-  for community votes (README → Phase 2 hooks). Ask the owner for the spec first.
-- **Publishing.** Not on the Chrome Web Store yet. Advice given: choose the developer account carefully
-  and check the EU "trader" rules. Before making the repo
-  public, consider switching the commit email to GitHub's noreply address.
-- **Icon.** The generated split-circle icon (`scripts/make-icons.mjs`) predates the rename to Botless. The
-  owner may want a redesign.
+  for community votes (README → Phase 2 hooks). Agree on a spec before building it.
+- **Publishing.** Not on the Chrome Web Store yet. That needs a developer account, store listing and
+  screenshots, and a privacy statement matching README → Privacy (EU "trader" rules apply if published
+  commercially).
+- **Icon.** The generated split-circle icon (`scripts/make-icons.mjs`) predates the rename to Botless and
+  could be redesigned.
 - **Unverified:** the localized label *text* fallback (the article-ID match covers it in practice), and
   `m.youtube.com` / YouTube Music (unsupported).
 
