@@ -1,6 +1,6 @@
 # Botless for YouTube — contributor notes
 
-MV3 Chrome extension (TypeScript, esbuild, vitest; no framework). Read first:
+MV3 Chrome extension (TypeScript 7, esbuild, vitest; no framework). Read first:
 
 - `README.md` covers what it does, the verdict model, permissions, privacy and architecture.
 - `docs/YOUTUBE-DOM.md` covers every YouTube selector and data path, verified live, with dates.
