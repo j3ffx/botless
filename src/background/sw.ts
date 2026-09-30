@@ -7,6 +7,7 @@
 import { CHECK_BACKOFF_MS, CHECK_SPACING_MS } from '../shared/check';
 import type { ChannelSummary, CheckPermit, SwRequest } from '../shared/messages';
 import { checksOn, DEFAULT_SETTINGS } from '../shared/settings';
+import { entryBytes, keysToEvict, PURGE_EVERY_MS } from '../shared/retention';
 import { parseSwRequest } from '../shared/validate';
 import {
   getChannels,
@@ -50,6 +51,7 @@ async function handle(msg: SwRequest): Promise<unknown> {
         if (!(same && prev?.cached && now - prev.lastSeen < 3_600_000)) {
           const next = withFreshCache(addObservation(prev, msg, now), settings, now);
           await local.set({ [KEY.channel(msg.channelId)]: next });
+          if (++writesSinceQuotaCheck >= QUOTA_CHECK_EVERY) await enforceQuota();
         }
         return summary(msg.channelId);
       });
@@ -161,7 +163,36 @@ async function purge(): Promise<void> {
       .filter(([k, v]) => isChannelKey(k) && ((v as ChannelRecord).lastSeen ?? 0) < cutoff)
       .map(([k]) => k);
     if (stale.length) await local.remove(stale);
+    await local.set({ [KEY.maint]: { lastPurge: Date.now() } });
+    await enforceQuota();
   });
+}
+
+// ---- Size bound (src/shared/retention.ts) ----
+
+const QUOTA_CHECK_EVERY = 25;
+let writesSinceQuotaCheck = 0;
+
+/** Past 70% of the storage quota, drop the least recently seen channels. Call inside serial(). */
+async function enforceQuota(): Promise<void> {
+  writesSinceQuotaCheck = 0;
+  const quota = local.QUOTA_BYTES || 10_485_760;
+  const used = await local.getBytesInUse(null);
+  if (used < quota * 0.7) return; // cheap early exit; keysToEvict applies the exact thresholds
+  const all = await local.get(null);
+  const records = Object.entries(all)
+    .filter(([k]) => isChannelKey(k))
+    .map(([k, v]) => ({ key: k, lastSeen: (v as ChannelRecord).lastSeen ?? 0, bytes: entryBytes(k, v) }));
+  const evict = keysToEvict(records, used, quota);
+  if (evict.length) await local.remove(evict);
+}
+
+/** The service worker starts many times a day: purge by age at most daily, but check the size every time. */
+async function maintenance(): Promise<void> {
+  const { maint } = await local.get(KEY.maint);
+  const last = (maint as { lastPurge?: number } | undefined)?.lastPurge ?? 0;
+  if (Date.now() - last > PURGE_EVERY_MS) await purge();
+  else await serial(enforceQuota);
 }
 
 /** Storage keys of removed features, deleted on update so nothing stale lingers on the user's device. */
@@ -173,3 +204,4 @@ chrome.runtime.onInstalled.addListener(async ({ reason }) => {
   await purge();
 });
 chrome.runtime.onStartup.addListener(() => void purge());
+void maintenance().catch(() => undefined);

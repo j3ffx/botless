@@ -7,6 +7,7 @@
  *   vmap          Record<videoId, channelId>       learned mapping so channel-less Shorts tiles can be badged
  *   stats         DailyStats                       today's flagged-video counter
  *   checks        CheckStats                       background checks done today + backoff (opt-in feature)
+ *   maint         { lastPurge: number }            when channels were last purged by age (service worker)
  */
 import { normalizeSettings, type Settings } from './settings';
 import type { ChannelRecord, CheckStats, DailyStats, Overrides } from './types';
@@ -17,6 +18,7 @@ export const KEY = {
   vmap: 'vmap',
   stats: 'stats',
   checks: 'checks',
+  maint: 'maint',
   channel: (id: string) => `c:${id}`,
 } as const;
 
