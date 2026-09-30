@@ -27,10 +27,18 @@ Ready-to-paste answers for the developer dashboard. They must stay consistent wi
   > mode off Botless sends nothing anywhere. It never acts on your YouTube account.
   >
   > Open source (GPL-3.0): https://github.com/j3ffx/botless
+  >
+  > Botless is an independent project, not affiliated with, endorsed by or sponsored by YouTube or Google.
 
-- **Screenshots** (1280×800 or 640×400, at least 1): a watch page with the *Probably AI* pill; search results
-  with badges; the popup; Settings. Take them signed out, or crop out the account avatar.
-- **Small promo tile** (440×280): optional.
+Images (PNG), per Google's image guidelines:
+
+- **Store icon** (required, 128×128): 96×96 artwork inside 16 px of transparent padding, readable on light and
+  dark backgrounds.
+- **Screenshots** (required, at least 1, up to 5; 1280×800 or 640×400, full bleed): a watch page with the
+  *Probably AI* pill; search results with badges; the popup; Settings. Take them signed out, or crop out the
+  account avatar.
+- **Small promo tile** (required, 440×280).
+- **Marquee** (optional, 1400×560): only used if the store features the extension.
 
 ## Privacy practices tab
 
