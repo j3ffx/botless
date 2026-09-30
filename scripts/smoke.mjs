@@ -95,6 +95,13 @@ try {
   await new Promise((r) => setTimeout(r, 200));
   const afterOff = (await storage('settings')).settings;
   check(afterOff?.enabled === false, 'turning Botless off from the popup is saved');
+  // With Active mode on but Botless off, the popup must not claim checks are running.
+  await popup.click('#youtube');
+  await new Promise((r) => setTimeout(r, 200));
+  const statusOff = await popup.$eval('#youtube-status', (el) => el.textContent);
+  check(/Inactive while Botless is off/.test(statusOff ?? ''), `Active mode shows as inactive while Botless is off ("${statusOff}")`);
+  await popup.click('#youtube');
+  await new Promise((r) => setTimeout(r, 200));
   await popup.click('#enabled');
   await new Promise((r) => setTimeout(r, 200));
   check((await storage('settings')).settings?.enabled === true, 'turning it back on is saved');

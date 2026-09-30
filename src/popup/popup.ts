@@ -78,6 +78,7 @@ async function refreshYoutube(): Promise<void> {
   const [settings, stats] = await Promise.all([getSettings(), getCheckStats()]);
   const el = $('youtube-status');
   if (!settings.youtubeRequests) return void (el.textContent = OFF_HINT);
+  if (!settings.enabled) return void (el.textContent = 'Inactive while Botless is off. Nothing is sent anywhere.');
   if (!settings.backgroundChecks) return void (el.textContent = 'On, but checks are turned off in Settings.');
   let usage = `${stats.count} of ${settings.checkDailyLimit} checks today.`;
   if (stats.backoffUntil && stats.backoffUntil > Date.now()) usage = 'Paused: YouTube asked to slow down.';
