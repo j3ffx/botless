@@ -14,6 +14,7 @@ export const SCOPES = [
   'deps', 'deps-dev', 'release', // used by Dependabot and `npm version`
 ];
 const MAX_HEADER = 72;
+const SQUASH_SUFFIX = ' (#9999)';
 // Commits up to and including this one predate the rule and are never checked.
 const RULE_START = 'ce9d981';
 // Dependabot's messages are generated ("build(deps-dev): Bump x from 1 to 2") and always capitalise "Bump".
@@ -91,6 +92,10 @@ function main(argv) {
   if (argv[0] === '--title') {
     const title = argv[1] ?? '';
     const problems = lint(title);
+    // Squash-merging appends " (#1234)" to the title; leave room so the commit on main still fits.
+    const room = MAX_HEADER - SQUASH_SUFFIX.length;
+    if ([...title].length > room && !problems.some((p) => p.startsWith('header is')))
+      problems.push(`title is ${[...title].length} characters (max ${room}: GitHub appends "${SQUASH_SUFFIX}" when squash-merging)`);
     if (!problems.length) return console.log(`PR title OK: ${title}`), 0;
     console.error(`✖ PR title rejected. It becomes the commit message on main (see CLAUDE.md → Commits):\n  ${problems.join('\n  ')}\n\n  ${title}`);
     return 1;
