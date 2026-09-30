@@ -26,4 +26,20 @@ export interface ChannelSummary {
 export type TabRequest = { type: 'getPageInfo' };
 export type TabResponse = { page: PageInfo | null };
 
-export const sendToSw = <T = unknown>(msg: SwRequest): Promise<T> => chrome.runtime.sendMessage(msg);
+/** The service worker answers `{ error }` when a handler throws (e.g. storage quota exceeded). */
+export const isSwError = (r: unknown): r is { error: string } => !!r && typeof r === 'object' && 'error' in r;
+
+/**
+ * Sends a request to the service worker. Resolves to undefined, never to `{ error }`, when the handler failed or
+ * the worker is unreachable, so callers only ever see a real answer or nothing.
+ */
+export async function sendToSw<T = unknown>(msg: SwRequest): Promise<T | undefined> {
+  try {
+    const r: unknown = await chrome.runtime.sendMessage(msg);
+    if (!isSwError(r)) return r as T;
+    console.warn('Botless: service worker error:', r.error);
+  } catch {
+    /* worker restarting or extension reloaded */
+  }
+  return undefined;
+}

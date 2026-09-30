@@ -142,6 +142,16 @@ describe('background checker', () => {
     expect(calls).toBe(3);
   });
 
+  it('waits a minute, instead of looping, when the service worker answers with an error', async () => {
+    let calls = 0;
+    const { checker, fetched } = setup({ labels: {}, permit: () => (calls++, { error: 'QUOTA_BYTES quota exceeded' }) });
+    checker.offer('JsBZOcqZerk', CID);
+    await new Promise((r) => setTimeout(r, 200));
+    expect(calls).toBe(1); // before the fix: thousands of calls, one per tick
+    expect(fetched).toEqual([]);
+    checker.stop();
+  });
+
   it('reports YouTube push-back so the service worker can pause everyone, and records nothing', async () => {
     const { checker, records, sent } = setup({ labels: {}, status: 429 });
     checker.offer('JsBZOcqZerk', CID);

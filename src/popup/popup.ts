@@ -1,10 +1,9 @@
-import type { ChannelSummary, SwRequest, TabResponse } from '../shared/messages';
+import { sendToSw, type ChannelSummary, type TabResponse } from '../shared/messages';
 import { VERDICT_LABEL } from '../shared/scoring';
 import { getCheckStats, getSettings, getTodayCount, KEY } from '../shared/storage';
 import type { PageInfo } from '../shared/types';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
-const sw = <T>(msg: SwRequest) => chrome.runtime.sendMessage(msg) as Promise<T>;
 
 let page: PageInfo | null = null;
 
@@ -19,7 +18,11 @@ async function activePage(): Promise<PageInfo | null> {
   }
 }
 
-function renderChannel(s: ChannelSummary): void {
+function renderChannel(s: ChannelSummary | undefined): void {
+  if (!s?.result) {
+    $('empty-msg').textContent = 'Botless could not read its data. Try again in a moment.';
+    return;
+  }
   $('channel').hidden = false;
   $('empty').hidden = true;
   $('ch-name').textContent = s.override?.name || s.record?.name || page?.channelName || s.channelId;
@@ -58,7 +61,7 @@ function renderChannel(s: ChannelSummary): void {
 
 async function setMark(verdict: 'ai' | 'human' | null): Promise<void> {
   if (!page?.channelId) return;
-  const s = await sw<ChannelSummary>({ type: 'setOverride', channelId: page.channelId, name: page.channelName, verdict });
+  const s = await sendToSw<ChannelSummary>({ type: 'setOverride', channelId: page.channelId, name: page.channelName, verdict });
   renderChannel(s);
 }
 
@@ -122,7 +125,7 @@ async function init(): Promise<void> {
       page.pageType === 'other' ? 'Open a video, Short or channel page to see its verdict.' : 'Reading this page…';
     return;
   }
-  renderChannel(await sw<ChannelSummary>({ type: 'getChannel', channelId: page.channelId }));
+  renderChannel(await sendToSw<ChannelSummary>({ type: 'getChannel', channelId: page.channelId }));
 }
 
 void init();

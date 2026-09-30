@@ -95,9 +95,12 @@ export function createChecker(deps: CheckerDeps) {
     else pending.set(job.videoId, job.channelId);
   }
 
+  /** Anything but a well-formed answer (no answer, an error) means "not now": never retry in a tight loop. */
   async function permit(): Promise<CheckPermit> {
-    const p = (await deps.send({ type: 'checkPermit' })) as CheckPermit | undefined;
-    return p ?? { ok: false, retryAfterMs: 60_000, reason: 'off' };
+    const p = (await deps.send({ type: 'checkPermit' })) as Partial<CheckPermit> | undefined;
+    if (p?.ok === true) return { ok: true };
+    if (p?.ok === false && typeof p.retryAfterMs === 'number' && p.retryAfterMs > 0) return p as CheckPermit;
+    return { ok: false, retryAfterMs: 60_000, reason: 'off' };
   }
 
   async function fetchVideo(videoId: string): Promise<CheckResult | null> {

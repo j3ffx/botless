@@ -3,7 +3,7 @@
  * verdicts in chrome.storage.local, and renders badges / fade / hide, the watch-page pill and auto-skip.
  * All writes go through the service worker so concurrent tabs can't clobber each other.
  */
-import type { ChannelSummary, SwRequest, TabRequest, TabResponse } from '../shared/messages';
+import { isSwError, type ChannelSummary, type SwRequest, type TabRequest, type TabResponse } from '../shared/messages';
 import { checksOn, normalizeSettings, type Settings } from '../shared/settings';
 import { getChannels, getOverrides, getSettings, getVmap, isChannelKey, KEY } from '../shared/storage';
 import type { ChannelRecord, Overrides, PageInfo, VerdictResult } from '../shared/types';
@@ -59,7 +59,10 @@ function shutdown(): void {
 function send(msg: SwRequest): Promise<any> {
   if (!alive()) return Promise.resolve(undefined);
   try {
-    return chrome.runtime.sendMessage(msg).catch(() => (alive(), undefined));
+    return chrome.runtime.sendMessage(msg).then(
+      (r) => (isSwError(r) ? undefined : r), // a failed handler answers { error }: treat it as no answer
+      () => (alive(), undefined),
+    );
   } catch {
     shutdown();
     return Promise.resolve(undefined);
@@ -233,7 +236,7 @@ async function onPage(info: PageInfo): Promise<void> {
   } else {
     summary = await send({ type: 'getChannel', channelId: info.channelId });
   }
-  if (!summary || page !== info) return; // navigated away meanwhile
+  if (!summary?.result || page !== info) return; // no answer, or navigated away meanwhile
   channels.set(info.channelId, summary.record ?? null);
   // The video playing right now carries YouTube's AI label: AI for this video (auto-skips labeled Shorts too).
   pageResult = withVideoLabel(summary.result, info.disclosure === 'ai', summary.override);

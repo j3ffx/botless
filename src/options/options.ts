@@ -1,5 +1,6 @@
 import { makeBackup, parseBackup } from '../shared/backup';
 import { DEFAULT_SETTINGS, normalizeSettings, type Settings } from '../shared/settings';
+import { sendToSw } from '../shared/messages';
 import { getOverrides, getSettings, isChannelKey, KEY } from '../shared/storage';
 import type { ChannelRecord, Overrides } from '../shared/types';
 
@@ -97,7 +98,7 @@ async function renderOverrides(): Promise<void> {
     rm.textContent = 'Remove';
     rm.setAttribute('aria-label', `Remove your mark on ${o.name || id}`);
     rm.addEventListener('click', () =>
-      void chrome.runtime.sendMessage({ type: 'setOverride', channelId: id, verdict: null }),
+      void sendToSw({ type: 'setOverride', channelId: id, verdict: null }),
     );
     act.append(rm);
 
