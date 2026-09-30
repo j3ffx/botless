@@ -4,7 +4,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const A = 'UCZy_1WNgqZXMqrYeKoX-n1A';
 const B = 'UCHnyfMqiRRG1u-2MsSQLbXA';
-const nextFrame = () => new Promise((r) => setTimeout(r, 60));
+/** Waits for a condition instead of a fixed delay: rendering goes through storage, a load timer and frames. */
+async function until(cond: () => unknown, ms = 3000): Promise<void> {
+  const start = Date.now();
+  while (!cond()) {
+    if (Date.now() - start > ms) throw new Error('timed out');
+    await new Promise((r) => setTimeout(r, 10));
+  }
+}
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -28,8 +35,8 @@ describe('tile rendering', () => {
     document.body.innerHTML = tile('aaaaaaaaaaa', A) + tile('bbbbbbbbbbb', B);
 
     await import('../src/content/index');
-    await nextFrame();
     const badge = (cid: string) => document.querySelector(`[data-botless-cid="${cid}"] .botless-badge`);
+    await until(() => badge(A) && badge(B));
     const [a0, b0] = [badge(A), badge(B)];
     expect(a0 && b0).toBeTruthy();
 
@@ -37,9 +44,9 @@ describe('tile rendering', () => {
     const recA = { id: A, videos: { vvvvvvvvvv1: 1, vvvvvvvvvv2: 1, ccccccccccc: 1 }, firstSeen: 0, lastSeen: 1 };
     store[`c:${A}`] = recA;
     for (const l of listeners) l({ [`c:${A}`]: { newValue: recA } }, 'local');
-    await nextFrame();
+    await until(() => badge(A) !== a0); // A's tile is refreshed (its tooltip reasons may have changed)
+    await new Promise((r) => setTimeout(r, 50)); // let any other re-render happen too
 
-    expect(badge(A)).not.toBe(a0); // A's tile is refreshed (its tooltip reasons may have changed)
     expect(badge(B)).toBe(b0); // B's badge is untouched
   });
 });
