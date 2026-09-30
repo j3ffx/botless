@@ -114,7 +114,7 @@ Code: [`src/content/checker.ts`](src/content/checker.ts) (scheduling),
   video again in this tab.
 - **Popup:** exactly two switches (Botless on/off, Active mode, with today's check usage), today's
   count of flagged videos, the current channel's verdict and the reasons behind it, and Mark as AI / Mark
-  as human. The community vote buttons are shown but disabled until phase 2.
+  as human.
 - **Options:** general (auto-skip), Active mode (background checks and their daily limit; greyed out
   while the gate is off), actions, thresholds, cache lifetimes, the list of channels
   you marked (with Remove), and JSON export/import. Imports are validated field by field.
@@ -272,12 +272,13 @@ Dev-only helpers (not shipped):
 Phase 2 isn't specified yet. It's expected to add community votes, and it will be designed and documented
 before anything is built. See [`docs/ROADMAP.md`](docs/ROADMAP.md). What's already in place:
 
-- `computeVerdict` already accepts `votes` and applies `minVotes` / `voteWeight`. Both are covered by
-  tests and exposed in Options.
+- `computeVerdict` already accepts `votes` and applies `minVotes` / `voteWeight` (settings, with defaults).
+  Both are covered by tests.
 - `ChannelRecord.votes` exists in the storage schema.
 - The service worker has a `vote` message that currently returns "phase 2". A vote client would plug
   in there.
-- The popup has the vote buttons in place, disabled.
+- The popup and Settings will need their vote controls back: the buttons and the `minVotes` / `voteWeight`
+  fields were removed from the UI until phase 2 exists.
 
 A backend would also need the `host_permissions` entry for its origin, a privacy notice update, and
 opt-in consent.

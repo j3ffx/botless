@@ -33,8 +33,7 @@ const shim = (pageInfo) => `
     const ov = store.overrides?.[id];
     if (ov) return { channelId: id, override: ov, record: store['c:' + id], result: { verdict: ov.verdict, score: 1, reasons: [{ signal: 'override', text: 'You marked this channel as ' + (ov.verdict === 'ai' ? 'AI' : 'human'), weight: ov.verdict === 'ai' ? 1 : -1 }] } };
     return { channelId: id, record: store['c:' + id], result: { verdict: 'ai', score: 1, reasons: [
-      { signal: 'ratio', text: "3 of 3 videos you've watched carry YouTube's AI label (100% ≥ 90%)", weight: 1 },
-      { signal: 'votes', text: 'Community: 2 votes so far (needs 5)', weight: 0 } ] } };
+      { signal: 'ratio', text: "3 of 3 videos you've watched carry YouTube's AI label (100% ≥ 90%)", weight: 1 } ] } };
   };
   window.chrome = {
     storage: { local, onChanged: { addListener: (f) => L.push(f) } },
