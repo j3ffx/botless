@@ -76,7 +76,17 @@ export function createChecker(deps: CheckerDeps) {
     }, delayMs);
   }
 
-  const need = (channelId: string) => checkNeed(deps.record(channelId), deps.override(channelId));
+  /**
+   * Records from the service worker's replies. The page's copy (deps.record) only catches up when
+   * chrome.storage.onChanged fires, which can be after the reply: judging by it alone dropped every confirmation.
+   */
+  const replied = new Map<string, ChannelRecord>();
+  const latest = (channelId: string): ChannelRecord | undefined => {
+    const page = deps.record(channelId);
+    const mine = replied.get(channelId);
+    return mine && (!page || mine.lastSeen > page.lastSeen) ? mine : page;
+  };
+  const need = (channelId: string) => checkNeed(latest(channelId), deps.override(channelId));
 
   function takeNext(): Job | null {
     for (const [videoId, channelId] of confirmVideos) {
@@ -149,6 +159,7 @@ export function createChecker(deps: CheckerDeps) {
       videoId,
       labeled: r.disclosure === 'ai',
     })) as ChannelSummary | undefined;
+    if (summary?.record) replied.set(channelId, summary.record);
     if (summary && checkNeed(summary.record, summary.override) === 'confirm') confirms.add(channelId);
   }
 
@@ -177,7 +188,7 @@ export function createChecker(deps: CheckerDeps) {
     } catch {
       networkFailed();
     }
-    const videoId = pickConfirmVideo(feed, deps.record(job.channelId));
+    const videoId = pickConfirmVideo(feed, latest(job.channelId));
     if (videoId && !tried.has(videoId)) confirmVideos.set(videoId, job.channelId); // checked next, with its own permit
     return 0;
   }

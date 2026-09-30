@@ -44,6 +44,11 @@ function setup(opts: {
   throws?: boolean;
   /** The page is left mid-request (reload, full navigation): the browser aborts the fetch. */
   leaves?: boolean;
+  /**
+   * The content script's copy of a record catches up only when chrome.storage.onChanged fires, which can be
+   * after the service worker's reply. Simulates that lag.
+   */
+  lagMs?: number;
   overrides?: Record<string, Override>;
 }) {
   const records: Record<string, ChannelRecord> = {};
@@ -73,13 +78,18 @@ function setup(opts: {
     if (msg.type === 'checkPermit') return opts.permit ? opts.permit() : { ok: true };
     if (msg.type === 'observe') {
       records[msg.channelId] = addObservation(records[msg.channelId], msg, Date.now());
-      return { channelId: msg.channelId, record: records[msg.channelId], result: { verdict: null, score: 0, reasons: [] } };
+      const record = records[msg.channelId]!;
+      if (opts.lagMs) setTimeout(() => (seen[msg.channelId] = record), opts.lagMs);
+      else seen[msg.channelId] = record;
+      return { channelId: msg.channelId, record, result: { verdict: null, score: 0, reasons: [] } };
     }
   });
 
+  /** What the content script's cache holds (lags behind `records` with `lagMs`). */
+  const seen: Record<string, ChannelRecord> = {};
   const checker = createChecker({
     send,
-    record: (cid) => records[cid],
+    record: (cid) => seen[cid],
     override: (cid) => opts.overrides?.[cid],
     active: () => true,
   });
@@ -109,6 +119,17 @@ describe('background checker', () => {
     await until(() => Object.keys(records[CID]?.videos ?? {}).length === 2);
     expect(fetched).toEqual(['ZneqyXsgpO4', 'feed', 'TCp_fT90F5s']); // skips the already-checked feed entry
     expect(records[CID]!.videos).toEqual({ ZneqyXsgpO4: 1, TCp_fT90F5s: 1 }); // 2 of 2 -> "Probably AI" by scoring
+  });
+
+  it("still confirms a label when the page's copy of the record catches up after the reply", async () => {
+    const { checker, records, fetched } = setup({
+      labels: { ZneqyXsgpO4: true, TCp_fT90F5s: true },
+      feed: ['TCp_fT90F5s'],
+      lagMs: 30,
+    });
+    checker.offer('ZneqyXsgpO4', CID);
+    await until(() => Object.keys(records[CID]?.videos ?? {}).length === 2);
+    expect(fetched).toEqual(['ZneqyXsgpO4', 'feed', 'TCp_fT90F5s']); // before the fix: the confirmation was dropped
   });
 
   it('checks a Short whose tile has no channel, learning its channel and label', async () => {
