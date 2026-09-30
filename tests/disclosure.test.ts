@@ -82,7 +82,8 @@ describe('detectDisclosureInDom', () => {
     ].join('');
     expect(detectDisclosureInDom(document)).toBe('ai');
 
+    // Nothing rendered means unknown, not "no label": the caller records nothing.
     document.body.innerHTML = '<ytd-watch-metadata></ytd-watch-metadata>';
-    expect(detectDisclosureInDom(document)).toBe('none');
+    expect(detectDisclosureInDom(document)).toBeNull();
   });
 });

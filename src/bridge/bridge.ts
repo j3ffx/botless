@@ -4,7 +4,8 @@
  * content-script world cannot see. This script has NO chrome.* access and makes NO network requests.
  *
  * It only:
- *   1. Stamps renderer elements with `data-botless-vid` / `data-botless-cid` / `data-botless-key` attributes.
+ *   1. Stamps renderer elements with `data-botless-vid` / `data-botless-cid` / `data-botless-key` attributes
+ *      (plus `data-botless-inferred` when the channel was inferred from context rather than read from data).
  *      DOM attributes are shared across worlds, so the content script reads them from there.
  *   2. Reports the current page (video, channel, official AI disclosure) as a JSON-string CustomEvent.
  *      Strings are used because object `detail`s do not reliably cross the world boundary.
@@ -18,6 +19,7 @@ import {
   soleChannel,
   videoIdFromHref,
   videoIdFromRendererData,
+  watchVideoIdOf,
 } from '../shared/extract';
 import type { PageInfo, PageType } from '../shared/types';
 
@@ -62,7 +64,11 @@ function stamp(el: AnyEl): boolean {
   const data = rendererData(el);
   const vid = videoIdFromRendererData(data) ?? videoIdFromHref(href);
   const shortsTile = SHORTS_TILE.test(el.tagName);
-  const cid = channelIdFromRendererData(data) ?? (shortsTile ? contextChannelId(el) : null);
+  const dataCid = channelIdFromRendererData(data);
+  const cid = dataCid ?? (shortsTile ? contextChannelId(el) : null);
+  // Inferred from the page around the tile: good enough to badge it, not to be remembered as a fact.
+  if (cid && !dataCid) el.dataset.botlessInferred = '1';
+  else delete el.dataset.botlessInferred;
   // Classic tiles sometimes get their data a tick after their href: drop any stale stamp from the
   // element's previous video and retry on a later pass (botlessHref stays unset so we come back).
   if ((!vid && !cid) || (!cid && !shortsTile)) {
@@ -70,6 +76,7 @@ function stamp(el: AnyEl): boolean {
       delete el.dataset.botlessKey;
       delete el.dataset.botlessVid;
       delete el.dataset.botlessCid;
+      delete el.dataset.botlessInferred;
       return true;
     }
     return false;
@@ -103,7 +110,14 @@ function soleChannelCached(data: unknown): ReturnType<typeof soleChannel> {
 }
 
 function contextChannelId(el: Element): string | null {
-  if (lastInfo?.pageType === 'channel' && lastInfo.channelId && lastInfo.url === location.href && el.closest('ytd-browse')) {
+  // YouTube keeps pages you navigated away from (home, subscriptions…) in the DOM, hidden: only the visible
+  // channel page counts (ytd-browse[page-subtype], verified 2026-09-30).
+  if (
+    lastInfo?.pageType === 'channel' &&
+    lastInfo.channelId &&
+    lastInfo.url === location.href &&
+    el.closest('ytd-browse[page-subtype="channels"]:not([hidden])')
+  ) {
     return lastInfo.channelId;
   }
   const shelf = el.closest('grid-shelf-view-model');
@@ -217,7 +231,10 @@ function readPage(detail?: { response?: NavData }): void {
     } else if (urlVid) {
       info.videoId = urlVid;
     }
-    const { disclosure, found } = detectDisclosureInData(nav.response);
+    // Data left over from the previous video (a stale getCurrentData() on the request-page / load paths) must
+    // not be read as this video's label. Watch responses say which video they're for; Shorts responses don't.
+    const dataVid = watchVideoIdOf(nav.response);
+    const { disclosure, found } = !dataVid || dataVid === urlVid ? detectDisclosureInData(nav.response) : { disclosure: 'none' as const, found: false };
     if (found) {
       info.disclosure = disclosure;
       info.disclosureSource = 'data';
@@ -227,7 +244,11 @@ function readPage(detail?: { response?: NavData }): void {
       domRetry = setTimeout(() => {
         if (location.href !== url) return;
         const scope = document.querySelector(pageType === 'watch' ? 'ytd-watch-metadata' : 'ytd-shorts') ?? document;
-        emit({ ...info, disclosure: detectDisclosureInDom(scope), disclosureSource: 'dom' });
+        // The Shorts player can hold neighbouring reels: with several sections we can't tell which is this video's.
+        if (pageType === 'shorts' && scope.querySelectorAll('how-this-was-made-section-view-model').length > 1) return;
+        const disclosure = detectDisclosureInDom(scope);
+        if (disclosure === null) return; // nothing rendered: unknown, so record nothing rather than "no label"
+        emit({ ...info, disclosure, disclosureSource: 'dom' });
       }, 2000);
     }
   } else if (pageType === 'channel') {

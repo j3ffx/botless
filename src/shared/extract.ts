@@ -100,6 +100,17 @@ export function soleChannel(root: unknown, maxNodes = 20_000): { id: string; nam
   return ids.size === 1 ? { id: [...ids][0]!, name } : null;
 }
 
+/**
+ * The video a watch-page response belongs to (`currentVideoEndpoint.watchEndpoint.videoId`, verified 2026-09-30),
+ * or null if the response doesn't say (Shorts responses don't). Lets the bridge reject stale page data.
+ */
+export function watchVideoIdOf(response: unknown): string | null {
+  if (!isObj(response)) return null;
+  const cve = response.currentVideoEndpoint;
+  const we = isObj(cve) ? cve.watchEndpoint : undefined;
+  return isObj(we) && typeof we.videoId === 'string' && VIDEO_ID_RE.test(we.videoId) ? we.videoId : null;
+}
+
 export function channelIdFromChannelPage(response: unknown): string | null {
   if (!isObj(response)) return null;
   const meta = isObj(response.metadata) ? response.metadata.channelMetadataRenderer : undefined;

@@ -92,6 +92,16 @@ that:
 Events observed per navigation: `yt-navigate-start` → `yt-page-data-fetched` → `yt-navigate-finish` →
 `yt-page-data-updated`.
 
+Which video the data is for (verified 2026-09-30, signed out): a watch-page `response` carries
+`currentVideoEndpoint.watchEndpoint.videoId`, and the bridge ignores the label when it doesn't match the URL
+(stale `getCurrentData()`). A Shorts `response` has no `currentVideoEndpoint` (the ID only appears deep in an
+unrelated engagement panel), so it can't be checked that way.
+
+DOM fallback rules: no rendered section means *unknown*, and nothing is recorded (like the data path). On
+Shorts, if more than one section is rendered, the answer is ambiguous (neighbouring reels) and nothing is
+recorded either. Which reel is active could not be verified: the Shorts player isn't fully rendered in a hidden
+tab.
+
 ## 2. Channel IDs per surface
 
 Rendered links contain only `@handles` (for example `/@veritasium`). Handles can be changed by the owner,
@@ -118,7 +128,11 @@ Notes:
   `UChgCIhMIg_CDmIKRlwMVWiS`, which is part of a base64 tracking param. Only `browseEndpoint.browseId` is
   trusted.
 - Shorts tiles get a channel in three cases (`contextChannelId` in `bridge.ts`):
-  1. **On a channel's own page** (Home, Shorts tab): the page's `externalId`.
+  1. **On a channel's own page** (Home, Shorts tab): the page's `externalId`, only for tiles inside the
+     visible `ytd-browse[page-subtype="channels"]`. YouTube keeps the pages you came from in the DOM, hidden
+     (`ytd-browse[page-subtype="home"][hidden]` after home → channel, verified 2026-09-30); their Shorts must
+     not inherit the channel. Tiles attributed this way get `data-botless-inferred` and are badged but never
+     saved to `vmap`.
   2. **In search, "Latest Shorts from X"** (a `grid-shelf-view-model`): its previous sibling is X's
      `ytd-shelf-renderer` "Latest from X". We accept it only if that shelf mentions exactly one channel ID
      and the Shorts shelf title contains that channel's name. Verified 2026-09-28. Generic "Shorts"

@@ -6,6 +6,7 @@ import {
   soleChannel,
   videoIdFromHref,
   videoIdFromRendererData,
+  watchVideoIdOf,
 } from '../src/shared/extract';
 import { LOCKUP_DATA, SEARCH_VIDEO_DATA, SHORTS_SHELF_ITEM } from './fixtures';
 
@@ -72,5 +73,16 @@ describe('video ID extraction', () => {
     expect(videoIdFromHref('/shorts/ZDB05cTiDUg')).toBe('ZDB05cTiDUg');
     expect(videoIdFromHref('https://www.youtube.com/shorts/ZDB05cTiDUg?feature=share')).toBe('ZDB05cTiDUg');
     expect(videoIdFromHref('/@veritasium')).toBeNull();
+  });
+});
+
+describe('watchVideoIdOf', () => {
+  it('reads which video a watch-page response is for', () => {
+    expect(watchVideoIdOf({ currentVideoEndpoint: { watchEndpoint: { videoId: 'ZneqyXsgpO4' } } })).toBe('ZneqyXsgpO4');
+  });
+  it("returns null when the response doesn't say (Shorts) or is malformed", () => {
+    expect(watchVideoIdOf({ overlay: {} })).toBeNull();
+    expect(watchVideoIdOf({ currentVideoEndpoint: { watchEndpoint: { videoId: 'not-an-id' } } })).toBeNull();
+    expect(watchVideoIdOf(undefined)).toBeNull();
   });
 });

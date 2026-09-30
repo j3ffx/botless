@@ -112,9 +112,14 @@ export function detectDisclosureInData(root: unknown): { disclosure: Disclosure;
   return { disclosure: combine(results), found: sawDescription || results.length > 0 };
 }
 
-/** DOM fallback. Only pass a subtree that belongs to the current video (e.g. ytd-watch-metadata). */
-export function detectDisclosureInDom(root: ParentNode): Disclosure {
+/**
+ * DOM fallback. Only pass a subtree that belongs to the current video (e.g. ytd-watch-metadata).
+ * Returns null when no "How this was made" section is rendered: that means "unknown" (not rendered yet, or
+ * markup changed), never "no label", so nothing gets recorded; the data path makes the same choice.
+ */
+export function detectDisclosureInDom(root: ParentNode): Disclosure | null {
   const sections = root.querySelectorAll('how-this-was-made-section-view-model');
+  if (!sections.length) return null;
   const results: Disclosure[] = [];
   sections.forEach((el) => {
     const q = (cls: string) => el.querySelector(`[class*="${cls}"]`)?.textContent ?? '';

@@ -184,7 +184,8 @@ function pass(): void {
     // The page can set these attributes too: only well-formed IDs are used (and learned).
     const vid = isVideoId(el.dataset.botlessVid) ? el.dataset.botlessVid : undefined;
     let cid = isChannelId(el.dataset.botlessCid) ? el.dataset.botlessCid : undefined;
-    if (vid && cid && vmap[vid] !== cid) pendingPairs.set(vid, cid);
+    // Pairs read from YouTube's data are remembered; ones the bridge inferred from context are only displayed.
+    if (vid && cid && vmap[vid] !== cid && !el.dataset.botlessInferred) pendingPairs.set(vid, cid);
     cid ??= vid ? vmap[vid] : undefined;
     if (!settings.enabled || !cid || !el.dataset.botlessKey) {
       // Channel-less tile (a Short): checking its video reveals both its channel and its AI label.
