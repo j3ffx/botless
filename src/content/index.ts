@@ -23,6 +23,11 @@ const channels = new Map<string, ChannelRecord | null>();
 let gen = 0;
 let page: PageInfo | null = null;
 let pageResult: VerdictResult | null = null;
+/**
+ * False until the user's settings are loaded. Until then only the defaults (Botless on) are known, so page
+ * events and scans are ignored; boot asks the bridge to re-send the current page once it's ready.
+ */
+let booted = false;
 
 // ---- Orphan detection ----
 // When the extension is reloaded or updated, this copy keeps running in tabs that were already open, but
@@ -165,7 +170,7 @@ document.addEventListener('visibilitychange', onVisibility);
 // ---- Tile pass (runs after each debounced bridge scan) ----
 
 function pass(): void {
-  if (!alive()) return;
+  if (!booted || !alive()) return;
   const tiles = document.querySelectorAll<HTMLElement>('[data-botless-key], [data-botless-applied]');
   for (const el of tiles) {
     // The page can set these attributes too: only well-formed IDs are used (and learned).
@@ -254,7 +259,7 @@ async function onPage(info: PageInfo): Promise<void> {
 
 function onPageEvent(e: Event): void {
   const detail = (e as CustomEvent<string>).detail;
-  if (typeof detail !== 'string' || !alive()) return;
+  if (!booted || typeof detail !== 'string' || !alive()) return;
   // Any script in the page can dispatch this event: accept only well-formed info about the page actually shown.
   let info: PageInfo | null = null;
   try {
@@ -330,6 +335,7 @@ void (async () => {
     alive();
     return;
   }
+  booted = true;
   gen++;
   schedulePass();
   document.dispatchEvent(new CustomEvent('botless:request-page'));
