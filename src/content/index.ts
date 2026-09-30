@@ -19,8 +19,14 @@ let overrides: Overrides = {};
 let vmap: Record<string, string> = {};
 /** undefined = not loaded yet, null = loaded and unknown to us. */
 const channels = new Map<string, ChannelRecord | null>();
-/** Bumped whenever something that affects rendering changes; part of each tile's applied signature. */
+/**
+ * Part of each tile's applied signature: bumping it re-renders tiles. `gen` covers what affects every tile
+ * (settings, marks, the video map); `chGen` one channel's data, so an observation (every background check
+ * makes one) only re-renders that channel's tiles instead of every badge on the page.
+ */
 let gen = 0;
+const chGen = new Map<string, number>();
+const bumpChannel = (cid: string): void => void chGen.set(cid, (chGen.get(cid) ?? 0) + 1);
 let page: PageInfo | null = null;
 let pageResult: VerdictResult | null = null;
 /**
@@ -172,6 +178,8 @@ document.addEventListener('visibilitychange', onVisibility);
 function pass(): void {
   if (!booted || !alive()) return;
   const tiles = document.querySelectorAll<HTMLElement>('[data-botless-key], [data-botless-applied]');
+  // Layout reads first, all together: reading positions between the DOM writes below would force a layout per tile.
+  const visible = checksOn(settings) ? new Set([...tiles].filter((el) => el.dataset.botlessVid && onScreen(el))) : null;
   for (const el of tiles) {
     // The page can set these attributes too: only well-formed IDs are used (and learned).
     const vid = isVideoId(el.dataset.botlessVid) ? el.dataset.botlessVid : undefined;
@@ -180,20 +188,20 @@ function pass(): void {
     cid ??= vid ? vmap[vid] : undefined;
     if (!settings.enabled || !cid || !el.dataset.botlessKey) {
       // Channel-less tile (a Short): checking its video reveals both its channel and its AI label.
-      if (checksOn(settings) && vid && !cid && el.dataset.botlessKey && onScreen(el)) checker.offer(vid, null);
+      if (visible?.has(el) && vid && !cid && el.dataset.botlessKey) checker.offer(vid, null);
       if (el.dataset.botlessApplied) clearTile(el);
       continue;
     }
     const channelResult = verdictFor(cid);
     if (!channelResult) continue; // loading; the load callback schedules another pass
-    if (checksOn(settings) && vid && checkNeed(channels.get(cid) ?? undefined, overrides[cid]) && onScreen(el)) {
+    if (visible?.has(el) && vid && checkNeed(channels.get(cid) ?? undefined, overrides[cid])) {
       checker.offer(vid, cid);
     }
     // A video carrying YouTube's own AI label is AI content even if its channel isn't judged yet.
     const result = withVideoLabel(channelResult, !!vid && channels.get(cid)?.videos[vid] === 1, overrides[cid]);
     const action = result.verdict ? settings.actions[result.verdict] : 'none';
     const needsBadge = action === 'badge' || action === 'fade';
-    const sig = `${el.dataset.botlessKey}|${result.verdict}|${action}|${gen}`;
+    const sig = `${el.dataset.botlessKey}|${result.verdict}|${action}|${gen}.${chGen.get(cid) ?? 0}`;
     if (el.dataset.botlessApplied === sig && (!needsBadge || hasBadge(el))) continue;
     if (action === 'none') clearTile(el);
     else if (!applyTile(el, result, action)) continue; // thumbnail not rendered yet; retry next pass
@@ -247,7 +255,7 @@ async function onPage(info: PageInfo): Promise<void> {
   channels.set(info.channelId, summary.record ?? null);
   // The video playing right now carries YouTube's AI label: AI for this video (auto-skips labeled Shorts too).
   pageResult = withVideoLabel(summary.result, info.disclosure === 'ai', summary.override);
-  gen++;
+  bumpChannel(info.channelId);
   schedulePass();
 
   renderOwnerBadge(info, pageResult, pillVisible(pageResult));
@@ -286,7 +294,8 @@ chrome.runtime.onMessage.addListener((msg: TabRequest, _sender, reply: (r: TabRe
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
-  let dirty = false;
+  let dirty = false; // affects every tile
+  let channelDirty = false;
   for (const [key, { newValue }] of Object.entries(changes)) {
     if (key === KEY.settings) {
       const wasEnabled = settings.enabled;
@@ -300,17 +309,18 @@ chrome.storage.onChanged.addListener((changes, area) => {
       dirty = true;
     } else if (key === KEY.vmap) {
       vmap = (newValue as Record<string, string>) ?? {};
-      dirty = true;
+      channelDirty = true; // a newly mapped Short changes its own verdict, which is part of its signature
     } else if (isChannelKey(key)) {
       const id = key.slice(2);
       if (channels.has(id)) {
         channels.set(id, (newValue as ChannelRecord) ?? null);
-        dirty = true;
+        bumpChannel(id); // only this channel's tiles
+        channelDirty = true;
       }
     }
   }
-  if (dirty) {
-    gen++;
+  if (dirty) gen++;
+  if (dirty || channelDirty) {
     schedulePass();
     const pageChannelChanged = !!page?.channelId && !!changes[KEY.channel(page.channelId)];
     if (changes[KEY.settings] || changes[KEY.overrides] || pageChannelChanged) refreshPill();
