@@ -154,6 +154,8 @@ bar, and the service worker validates every message again ([`src/shared/validate
 
 ## Privacy
 
+The privacy policy, in plain language, is [`PRIVACY.md`](PRIVACY.md). The technical details:
+
 - By default Botless makes **no network requests** of its own. The only `fetch` calls are in
   `src/content/checker.ts`, and they run only while **Active mode** is on. They go to
   `www.youtube.com` only, without cookies, and never follow a redirect to another host. There is no remote

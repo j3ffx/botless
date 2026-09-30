@@ -73,7 +73,7 @@ discuss it first, then update the test in the same commit.
 - **Privacy.** With "Active mode" off (the default), Botless makes no requests of its own. The only `fetch`
   calls live in `src/content/checker.ts`, go to `www.youtube.com` with `credentials: "omit"`, and are
   rate-limited by the service worker (`checkPermit`). The service worker and the MAIN-world bridge never
-  fetch.
+  fetch. Storing or sending anything new means updating `PRIVACY.md` and `docs/STORE.md` in the same commit.
 - **Never act on the user's YouTube account** (feedback, likes, subscriptions…). A "Don't recommend
   channel" feature was built and then removed (see ROADMAP).
 - **Popup: at most two switches:** Botless on/off, and Active mode. Anything else goes in Settings.

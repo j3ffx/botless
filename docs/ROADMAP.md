@@ -26,9 +26,9 @@ rejected on purpose.
 
 - **Phase 2 is unspecified.** Hooks exist for community votes (README → Phase 2 hooks). Agree on a spec
   before building it.
-- **Publishing.** Not on the Chrome Web Store yet. That needs a developer account, store listing and
-  screenshots, and a privacy statement matching README → Privacy (EU "trader" rules apply if published
-  commercially).
+- **Publishing.** Not on the Chrome Web Store yet. The privacy policy ([`PRIVACY.md`](../PRIVACY.md)) and
+  every dashboard answer ([`docs/STORE.md`](STORE.md)) are ready. Still needed: a developer account, the
+  screenshots, and the EU "trader" declaration (its rules apply if published commercially).
 - **Icon.** The generated split-circle icon (`scripts/make-icons.mjs`) predates the rename to Botless and
   could be redesigned.
 - **Unverified:** the localized label *text* fallback (the article-ID match covers it in practice), and
