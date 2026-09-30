@@ -35,9 +35,10 @@ Search `We R Cinephiles` for a "Latest Shorts from X" shelf. Their Shorts tab is
 
 1. **First look.** The popup shows "0 likely-AI videos flagged today" and "Open a YouTube video…".
 2. **Official label.** Open `watch?v=ZneqyXsgpO4`. The description has "How this was made → Made with AI".
-   Expect an **Inconclusive** pill next to the channel name, with the reason "1 of 1 video… need 2+ videos"
-   in the popup. It turns **Probably AI** after a second labeled video, or right away if Settings → minimum
-   videos is set to 1.
+   Expect a **Probably AI** pill next to the channel name: this video carries the label. The popup shows the
+   *channel's* verdict, **Inconclusive**, with the reason "1 of 1 video… need 2+ videos". The channel turns
+   **Probably AI** (and its other videos' tiles get red badges) after a second labeled video, or right away if
+   Settings → minimum videos is set to 1.
 3. **Auto-dubbed.** `watch?v=LKQMw1WGL78` must get no AI verdict.
 4. **Manual mark.** Popup → Mark as AI on a known channel. Its tiles get red badges in search, on home and
    in the sidebar, without a reload. Mark as human and Clear also update live.
