@@ -1,4 +1,4 @@
-// Renders the toolbar icon (a split circle: half solid red "AI", half white "human" on a dark tile)
+// Renders the icons (a split circle: half solid red "AI", half white ring "human", on a dark tile)
 // to PNG at each size with 4x4 supersampling. No image libraries needed.
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
@@ -23,27 +23,33 @@ function png(size, px) {
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
 }
 
-const TILE = [24, 24, 27], RED = [229, 45, 45], WHITE = [245, 245, 245];
-function sample(x, y) { // x,y in [0,1]
-  const r = 0.22, inset = 0.02; // rounded-square tile
+const TILE = [24, 24, 27], EDGE = [58, 58, 64], RED = [229, 45, 45], WHITE = [245, 245, 245];
+/**
+ * x,y in [0,1]. `inset` is the transparent margin on each side. The Chrome Web Store wants 96×96 artwork in the
+ * 128×128 icon (inset 16/128); toolbar sizes keep a near-full tile, or the artwork would shrink to 12 px at 16.
+ */
+function sample(x, y, inset) {
+  const t = 1 - 2 * inset; // tile size; everything below scales with it
+  const r = 0.229 * t; // corner radius
   const dx = Math.max(Math.abs(x - 0.5) - (0.5 - inset - r), 0), dy = Math.max(Math.abs(y - 0.5) - (0.5 - inset - r), 0);
-  if (Math.hypot(dx, dy) > r) return null;
+  const edge = Math.hypot(dx, dy) - r; // < 0 inside the tile
+  if (edge > 0) return null;
   const d = Math.hypot(x - 0.5, y - 0.5);
-  if (d < 0.3) {
-    if (x < 0.5) return RED;
-    return d > 0.2 ? WHITE : TILE; // right half: ring = "outline" human side
+  if (d < 0.302 * t) {
+    if (x < 0.5) return RED; // solid half: "AI"
+    return d > 0.198 * t ? WHITE : TILE; // ring half: "human"
   }
-  return TILE;
+  return edge > -0.012 ? EDGE : TILE; // faint outline, so the dark tile still shows on dark backgrounds
 }
 
 mkdirSync('src/static/icons', { recursive: true });
-for (const size of [16, 32, 48, 128]) {
+for (const [size, inset] of [[16, 0.02], [32, 0.02], [48, 0.02], [128, 16 / 128]]) {
   const px = Buffer.alloc(size * size * 4);
   const ss = 4;
   for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
     let r = 0, g = 0, b = 0, a = 0;
     for (let j = 0; j < ss; j++) for (let i = 0; i < ss; i++) {
-      const c = sample((x + (i + 0.5) / ss) / size, (y + (j + 0.5) / ss) / size);
+      const c = sample((x + (i + 0.5) / ss) / size, (y + (j + 0.5) / ss) / size, inset);
       if (c) { r += c[0]; g += c[1]; b += c[2]; a++; }
     }
     const o = (y * size + x) * 4;
