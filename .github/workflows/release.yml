@@ -56,9 +56,13 @@ jobs:
       - name: Release notes
         # Values reach the shell through env, never by pasting ${{ }} into the script (script injection).
         env:
+          GH_TOKEN: ${{ github.token }}
           REF: ${{ github.ref_type == 'tag' && github.ref_name || 'HEAD' }}
         run: |
-          node scripts/release-notes.mjs "$REF" > notes.md
+          # From the last *published* release, not the last tag: a tag whose release failed (v0.1.1) would
+          # otherwise hide its changes from every release note.
+          from=$(gh release list --exclude-drafts --limit 1 --json tagName --jq '.[0].tagName // empty')
+          node scripts/release-notes.mjs "$REF" "$from" > notes.md
           cat notes.md >> "$GITHUB_STEP_SUMMARY"
 
       # Releases are immutable once published (repo setting): neither the zip nor the tag can change afterwards.

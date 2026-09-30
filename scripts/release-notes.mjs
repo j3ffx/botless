@@ -1,15 +1,19 @@
-// Prints Markdown release notes for a tag, grouped by Conventional Commit type, from the previous tag.
-//   node scripts/release-notes.mjs [tag]    (default: HEAD, i.e. what the next release would contain)
+// Prints Markdown release notes for a tag, grouped by Conventional Commit type.
+//   node scripts/release-notes.mjs [tag] [from]
+// tag defaults to HEAD (what the next release would contain); from, to the previous tag. The Release workflow
+// passes the last published release as `from`, since a tag whose release failed has no notes of its own.
 import { execFileSync } from 'node:child_process';
 
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
 
-const to = process.argv[2] ?? 'HEAD';
-let from = '';
-try {
-  from = git('describe', '--tags', '--abbrev=0', '--match', 'v*', `${to}^`);
-} catch {
-  /* first release: everything up to `to` */
+const to = process.argv[2] || 'HEAD';
+let from = process.argv[3] || '';
+if (!from) {
+  try {
+    from = git('describe', '--tags', '--abbrev=0', '--match', 'v*', `${to}^`);
+  } catch {
+    /* first release: everything up to `to` */
+  }
 }
 
 const log = git('log', '--no-merges', '--format=%h%x00%s%x00%b%x1e', from ? `${from}..${to}` : to);
