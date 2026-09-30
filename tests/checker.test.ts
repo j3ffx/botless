@@ -44,6 +44,8 @@ function setup(opts: {
   throws?: boolean;
   /** The page is left mid-request (reload, full navigation): the browser aborts the fetch. */
   leaves?: boolean;
+  /** Same, but Chrome rejects the fetch first and fires pagehide a moment later (typed URL, bookmark). */
+  leavesLate?: boolean;
   /**
    * The content script's copy of a record catches up only when chrome.storage.onChanged fires, which can be
    * after the service worker's reply. Simulates that lag.
@@ -61,7 +63,8 @@ function setup(opts: {
       expect(init?.credentials).toBe('omit'); // never with the user's cookies
       expect(init?.redirect).toBe('error'); // never follow YouTube to another host
       if (opts.leaves) dispatchEvent(new Event('pagehide'));
-      if (opts.throws || opts.leaves) throw new TypeError('Failed to fetch');
+      if (opts.leavesLate) setTimeout(() => dispatchEvent(new Event('pagehide')), 150);
+      if (opts.throws || opts.leaves || opts.leavesLate) throw new TypeError('Failed to fetch');
       if (url.includes('/feeds/videos.xml')) {
         fetched.push('feed');
         return new Response(feedXml(...(opts.feed ?? [])), { status: 200 });
@@ -202,6 +205,14 @@ describe('background checker', () => {
     await new Promise((r) => setTimeout(r, 50));
     expect(fetched).toEqual([]);
     expect(sent.map((m) => m.type)).toEqual(['checkPermit']); // before the fix: a 15-minute pause for every tab
+  });
+
+  it('does not pause everyone either when the page is left just after the request failed', async () => {
+    const { checker, sent } = setup({ labels: {}, leavesLate: true });
+    checker.offer('JsBZOcqZerk', CID);
+    await until(() => sent.some((m) => m.type === 'checkPermit'));
+    await new Promise((r) => setTimeout(r, 1500));
+    expect(sent.map((m) => m.type)).toEqual(['checkPermit']); // before the fix: checkFailed, sent before pagehide
   });
 
   it('handles the newest offer first and never re-checks a video in the same tab', async () => {

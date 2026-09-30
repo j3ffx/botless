@@ -61,9 +61,15 @@ export function createChecker(deps: CheckerDeps) {
   addEventListener('pagehide', () => (leaving = true));
   addEventListener('pageshow', () => (leaving = false)); // back from the back/forward cache
 
-  /** Redirected, offline, blocked by another extension, or not JSON (e.g. a consent page): back off. */
+  /**
+   * Redirected, offline, blocked by another extension, or not JSON (e.g. a consent page): back off. Reported a
+   * moment later, and only if the page is still here: for a typed URL or a bookmark, Chrome rejects the aborted
+   * fetch before pagehide fires, and a page being left never runs the timer.
+   */
   const networkFailed = (): void => {
-    if (!leaving) void deps.send({ type: 'checkFailed', status: 0 });
+    setTimeout(() => {
+      if (!leaving) void deps.send({ type: 'checkFailed', status: 0 });
+    }, 1000);
   };
 
   const clientVersion = () => document.documentElement.dataset.botlessClient || FALLBACK_CLIENT_VERSION;
