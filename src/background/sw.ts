@@ -109,8 +109,8 @@ async function handle(msg: SwRequest): Promise<unknown> {
       return serial(() => checkPermit());
 
     case 'checkFailed':
-      // Rate limited, blocked or YouTube having trouble: pause everyone for a while.
-      if (msg.status === 429 || msg.status === 403 || msg.status >= 500) {
+      // Rate limited, blocked, redirected or unreachable (status 0), or YouTube having trouble: pause everyone.
+      if (msg.status === 0 || msg.status === 429 || msg.status === 403 || msg.status >= 500) {
         return serial(async () => {
           const stats = await getCheckStats();
           await local.set({ [KEY.checks]: { ...stats, backoffUntil: Date.now() + CHECK_BACKOFF_MS } });

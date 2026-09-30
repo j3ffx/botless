@@ -36,7 +36,14 @@ const nextJson = (channelId: string, labeled: boolean) => ({
 const feedXml = (...ids: string[]) => `<feed>${ids.map((id) => `<entry><yt:videoId>${id}</yt:videoId></entry>`).join('')}</feed>`;
 
 /** Fake service worker + YouTube. `labels` says which video IDs carry the AI label. */
-function setup(opts: { labels: Record<string, boolean>; feed?: string[]; permit?: () => object; status?: number; overrides?: Record<string, Override> }) {
+function setup(opts: {
+  labels: Record<string, boolean>;
+  feed?: string[];
+  permit?: () => object;
+  status?: number;
+  throws?: boolean;
+  overrides?: Record<string, Override>;
+}) {
   const records: Record<string, ChannelRecord> = {};
   const sent: SwRequest[] = [];
   const fetched: string[] = [];
@@ -45,6 +52,8 @@ function setup(opts: { labels: Record<string, boolean>; feed?: string[]; permit?
     'fetch',
     vi.fn(async (url: string, init?: RequestInit) => {
       expect(init?.credentials).toBe('omit'); // never with the user's cookies
+      expect(init?.redirect).toBe('error'); // never follow YouTube to another host
+      if (opts.throws) throw new TypeError('Failed to fetch');
       if (url.includes('/feeds/videos.xml')) {
         fetched.push('feed');
         return new Response(feedXml(...(opts.feed ?? [])), { status: 200 });
@@ -138,6 +147,14 @@ describe('background checker', () => {
     checker.offer('JsBZOcqZerk', CID);
     await until(() => sent.some((m) => m.type === 'checkFailed'));
     expect(sent.find((m) => m.type === 'checkFailed')).toEqual({ type: 'checkFailed', status: 429 });
+    expect(records[CID]).toBeUndefined();
+  });
+
+  it('backs off on a redirect or network error instead of silently retrying', async () => {
+    const { checker, records, sent } = setup({ labels: {}, throws: true });
+    checker.offer('JsBZOcqZerk', CID);
+    await until(() => sent.some((m) => m.type === 'checkFailed'));
+    expect(sent.find((m) => m.type === 'checkFailed')).toEqual({ type: 'checkFailed', status: 0 });
     expect(records[CID]).toBeUndefined();
   });
 

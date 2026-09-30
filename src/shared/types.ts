@@ -80,7 +80,7 @@ export interface CheckStats {
   day: string;
   /** Background checks done today, across all tabs. */
   count: number;
-  /** Epoch ms until which checks are paused after YouTube pushed back (429/403/5xx). */
+  /** Epoch ms until which checks are paused after YouTube pushed back (429/403/5xx) or a request failed. */
   backoffUntil?: number;
 }
 

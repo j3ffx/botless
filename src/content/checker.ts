@@ -7,7 +7,10 @@
  * - Every request first asks the service worker for a slot: it spaces requests across ALL tabs and
  *   enforces the daily cap and back-off.
  * - Requests go to www.youtube.com only, with `credentials: "omit"` (no cookies → not tied to the account,
- *   can't touch watch history or recommendations).
+ *   can't touch watch history or recommendations) and `redirect: "error"` (a redirect, e.g. to a consent or
+ *   bot-check page, fails instead of sending a request to another host).
+ * - Any failure (HTTP error, redirect, network error, unreadable answer) is reported so the service worker
+ *   pauses checks for every tab.
  * - Results are recorded exactly like a watched video (`observe`), so the normal scoring applies.
  */
 import {
@@ -103,6 +106,7 @@ export function createChecker(deps: CheckerDeps) {
       const res = await fetch('https://www.youtube.com/youtubei/v1/next?prettyPrint=false', {
         method: 'POST',
         credentials: 'omit',
+        redirect: 'error',
         headers: { 'content-type': 'application/json' },
         body: nextRequestBody(videoId, clientVersion()),
       });
@@ -112,7 +116,9 @@ export function createChecker(deps: CheckerDeps) {
       }
       return parseNextResponse(await res.json());
     } catch {
-      return null; // offline, blocked by another extension, … — just skip this video
+      // Redirected, offline, blocked by another extension, or not JSON (e.g. a consent page): back off.
+      void deps.send({ type: 'checkFailed', status: 0 });
+      return null;
     }
   }
 
@@ -150,11 +156,12 @@ export function createChecker(deps: CheckerDeps) {
     try {
       const res = await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${encodeURIComponent(job.channelId)}`, {
         credentials: 'omit',
+        redirect: 'error',
       });
       if (res.ok) feed = parseChannelFeed(await res.text());
       else void deps.send({ type: 'checkFailed', status: res.status });
     } catch {
-      /* skip */
+      void deps.send({ type: 'checkFailed', status: 0 }); // redirected, offline, …: back off
     }
     const videoId = pickConfirmVideo(feed, deps.record(job.channelId));
     if (videoId && !tried.has(videoId)) confirmVideos.set(videoId, job.channelId); // checked next, with its own permit
