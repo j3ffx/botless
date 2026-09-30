@@ -42,6 +42,8 @@ function setup(opts: {
   permit?: () => object;
   status?: number;
   throws?: boolean;
+  /** The page is left mid-request (reload, full navigation): the browser aborts the fetch. */
+  leaves?: boolean;
   overrides?: Record<string, Override>;
 }) {
   const records: Record<string, ChannelRecord> = {};
@@ -53,7 +55,8 @@ function setup(opts: {
     vi.fn(async (url: string, init?: RequestInit) => {
       expect(init?.credentials).toBe('omit'); // never with the user's cookies
       expect(init?.redirect).toBe('error'); // never follow YouTube to another host
-      if (opts.throws) throw new TypeError('Failed to fetch');
+      if (opts.leaves) dispatchEvent(new Event('pagehide'));
+      if (opts.throws || opts.leaves) throw new TypeError('Failed to fetch');
       if (url.includes('/feeds/videos.xml')) {
         fetched.push('feed');
         return new Response(feedXml(...(opts.feed ?? [])), { status: 200 });
@@ -91,7 +94,10 @@ async function until(cond: () => boolean, ms = 2000): Promise<void> {
   }
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  dispatchEvent(new Event('pageshow')); // every checker built so far listens: undo a test's pagehide
+});
 
 describe('background checker', () => {
   it('checks the tile video, then confirms a label with one more video from the channel feed', async () => {
@@ -166,6 +172,15 @@ describe('background checker', () => {
     await until(() => sent.some((m) => m.type === 'checkFailed'));
     expect(sent.find((m) => m.type === 'checkFailed')).toEqual({ type: 'checkFailed', status: 0 });
     expect(records[CID]).toBeUndefined();
+  });
+
+  it('does not pause everyone when the request only failed because the page was being left', async () => {
+    const { checker, fetched, sent } = setup({ labels: {}, leaves: true });
+    checker.offer('JsBZOcqZerk', CID);
+    await until(() => sent.some((m) => m.type === 'checkPermit'));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(fetched).toEqual([]);
+    expect(sent.map((m) => m.type)).toEqual(['checkPermit']); // before the fix: a 15-minute pause for every tab
   });
 
   it('handles the newest offer first and never re-checks a video in the same tab', async () => {

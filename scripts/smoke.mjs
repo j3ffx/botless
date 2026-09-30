@@ -6,7 +6,7 @@
 //
 // Get a Chrome for Testing binary with: npx @puppeteer/browsers install chrome@stable
 // (branded Chrome ignores --load-extension since v137). Nothing here touches the real youtube.com:
-// every request is intercepted and answered locally.
+// every request is intercepted, then answered locally or left pending.
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -157,6 +157,8 @@ try {
     if (req.url() === PAGE_URL) return req.respond({ status: 200, contentType: 'text/html', body: FAKE_YOUTUBE });
     if (req.url() === 'https://www.youtube.com/favicon.ico') return req.respond({ status: 204 }); // the browser's, not ours
     requests.push(`${req.method()} ${req.url()}`);
+    // A check is left unanswered: it's still in flight when the page reloads (see the end of this section).
+    if (req.url().includes('/youtubei/v1/next')) return;
     // Answer instead of aborting, so a request made by Botless shows up here rather than as a console error.
     return req.respond({ status: 503, contentType: 'text/plain', body: 'blocked by smoke test' });
   });
@@ -191,6 +193,13 @@ try {
   const outside = requests.filter((r) => !/^(GET|POST) https:\/\/www\.youtube\.com\//.test(r));
   check(requests.some((r) => r.includes('youtube.com/youtubei/v1/next')), 'with Active mode on, the unknown channel gets checked');
   check(outside.length === 0, `Active mode only talks to www.youtube.com${outside.length ? `: ${outside.join(', ')}` : ''}`);
+
+  // Leaving the page aborts the check still in flight. That says nothing about YouTube, so it must not pause
+  // checks in every tab (it did, and made the check above fail now and then).
+  await yt.reload({ waitUntil: 'load' });
+  await new Promise((r) => setTimeout(r, 1_000));
+  const { checks } = await storage('checks');
+  check(!(checks?.backoffUntil > Date.now()), 'reloading mid-check doesn\'t pause checks');
   check(ytErrors.length === 0, `no errors on the YouTube page${ytErrors.length ? `: ${ytErrors.join(' | ')}` : ''}`);
 } finally {
   await browser.close();

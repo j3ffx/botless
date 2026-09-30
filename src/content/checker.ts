@@ -53,6 +53,18 @@ export function createChecker(deps: CheckerDeps) {
   const confirmTried = new Set<string>();
   let timer: ReturnType<typeof setTimeout> | undefined;
   let running = false;
+  /**
+   * True while the page is being left (reload, full navigation). The browser then aborts our fetch, which
+   * says nothing about YouTube: reporting it would pause checks in every tab for CHECK_BACKOFF_MS.
+   */
+  let leaving = false;
+  addEventListener('pagehide', () => (leaving = true));
+  addEventListener('pageshow', () => (leaving = false)); // back from the back/forward cache
+
+  /** Redirected, offline, blocked by another extension, or not JSON (e.g. a consent page): back off. */
+  const networkFailed = (): void => {
+    if (!leaving) void deps.send({ type: 'checkFailed', status: 0 });
+  };
 
   const clientVersion = () => document.documentElement.dataset.botlessClient || FALLBACK_CLIENT_VERSION;
 
@@ -119,8 +131,7 @@ export function createChecker(deps: CheckerDeps) {
       }
       return parseNextResponse(await res.json());
     } catch {
-      // Redirected, offline, blocked by another extension, or not JSON (e.g. a consent page): back off.
-      void deps.send({ type: 'checkFailed', status: 0 });
+      networkFailed();
       return null;
     }
   }
@@ -164,7 +175,7 @@ export function createChecker(deps: CheckerDeps) {
       if (res.ok) feed = parseChannelFeed(await res.text());
       else void deps.send({ type: 'checkFailed', status: res.status });
     } catch {
-      void deps.send({ type: 'checkFailed', status: 0 }); // redirected, offline, …: back off
+      networkFailed();
     }
     const videoId = pickConfirmVideo(feed, deps.record(job.channelId));
     if (videoId && !tried.has(videoId)) confirmVideos.set(videoId, job.channelId); // checked next, with its own permit
