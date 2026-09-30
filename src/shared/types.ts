@@ -47,7 +47,7 @@ export interface ChannelRecord {
 
 export interface CachedVerdict extends VerdictResult {
   computedAt: number;
-  /** Hash of the thresholds used, so a settings change invalidates the cache. */
+  /** Scoring version + thresholds used (verdict.ts cacheKey), so a scoring update or settings change invalidates it. */
   thresholdsKey: string;
 }
 

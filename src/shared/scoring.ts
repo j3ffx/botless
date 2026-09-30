@@ -33,6 +33,12 @@
 import type { Thresholds } from './settings';
 import type { Reason, VerdictResult, VoteCounts } from './types';
 
+/**
+ * Bump whenever WEIGHTS or the rules below change: cached verdicts carry it, so users see the new scoring
+ * right after an update instead of up to cacheTtlDays later.
+ */
+export const SCORING_VERSION = 2;
+
 export const WEIGHTS = {
   /** Ratio rule fired: official labels on (almost) every seen video. */
   ratioHit: 1.0,

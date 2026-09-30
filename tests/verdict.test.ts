@@ -57,6 +57,13 @@ describe('resolveVerdict cache + TTL', () => {
     expect(resolveVerdict(cached, undefined, looser, 1).result.verdict).toBe('ai');
   });
 
+  it('invalidates caches computed by an older scoring version', () => {
+    const cached = withFreshCache(recordWith(3, 0), s, 0);
+    cached.cached!.verdict = 'inconclusive';
+    cached.cached!.thresholdsKey = cached.cached!.thresholdsKey.replace(/^v\d+/, 'v0'); // cached before an update
+    expect(resolveVerdict(cached, undefined, s, DAY)).toMatchObject({ stale: true, result: { verdict: 'ai' } });
+  });
+
   it('treats a single labeled video as AI for that video, without changing the channel verdict', () => {
     const channel = resolveVerdict(recordWith(1, 0), undefined, s, 0).result; // 1 of 1 labeled -> Inconclusive
     expect(channel.verdict).toBe('inconclusive');

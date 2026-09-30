@@ -1,4 +1,4 @@
-import { computeVerdict, type ScoringInput } from './scoring';
+import { computeVerdict, SCORING_VERSION, type ScoringInput } from './scoring';
 import { thresholdsKey, type Settings } from './settings';
 import type { CachedVerdict, ChannelRecord, Override, VerdictResult } from './types';
 
@@ -15,11 +15,14 @@ export function scoringInput(record: ChannelRecord | undefined, override: Overri
   };
 }
 
-/** A cached verdict is usable if it is younger than the TTL and was computed with the current thresholds. */
+/** What a cached verdict depends on besides the channel's data: the scoring rules and the user's thresholds. */
+export const cacheKey = (settings: Settings): string => `v${SCORING_VERSION}|${thresholdsKey(settings.thresholds)}`;
+
+/** A cached verdict is usable if it is younger than the TTL and was computed with the current rules and thresholds. */
 export function isCacheFresh(cached: CachedVerdict | undefined, settings: Settings, now: number): cached is CachedVerdict {
   return (
     !!cached &&
-    cached.thresholdsKey === thresholdsKey(settings.thresholds) &&
+    cached.thresholdsKey === cacheKey(settings) &&
     now - cached.computedAt < settings.cacheTtlDays * DAY_MS
   );
 }
@@ -59,7 +62,7 @@ export function withVideoLabel(channelResult: VerdictResult, videoLabeled: boole
 
 export function withFreshCache(record: ChannelRecord, settings: Settings, now: number): ChannelRecord {
   const r = computeVerdict(scoringInput(record, undefined), settings.thresholds);
-  return { ...record, cached: { ...r, computedAt: now, thresholdsKey: thresholdsKey(settings.thresholds) } };
+  return { ...record, cached: { ...r, computedAt: now, thresholdsKey: cacheKey(settings) } };
 }
 
 /** Record that we checked `videoId`'s disclosure. Moves it to the newest position and trims the oldest. */
