@@ -1,4 +1,4 @@
-import type { ChannelRecord, Override, PageInfo, VerdictResult } from './types';
+import type { ChannelRecord, Override, Overrides, PageInfo, VerdictResult } from './types';
 
 /** Messages handled by the service worker (the single writer for channel data). */
 export type SwRequest =
@@ -11,7 +11,10 @@ export type SwRequest =
   | { type: 'getChannel'; channelId: string }
   /** Background checks: ask for a slot under the global rate limit / daily cap before each request. */
   | { type: 'checkPermit' }
-  | { type: 'checkFailed'; status: number };
+  | { type: 'checkFailed'; status: number }
+  /** Settings page: merge an imported backup's marks and channels, or forget all observations. */
+  | { type: 'importData'; overrides: Overrides; channels: Record<string, ChannelRecord> }
+  | { type: 'clearObservations' };
 
 export type CheckPermit = { ok: true } | { ok: false; retryAfterMs: number; reason: 'off' | 'spacing' | 'cap' | 'backoff' };
 

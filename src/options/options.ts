@@ -2,7 +2,7 @@ import { makeBackup, parseBackup } from '../shared/backup';
 import { DEFAULT_SETTINGS, normalizeSettings, type Settings } from '../shared/settings';
 import { sendToSw } from '../shared/messages';
 import { getOverrides, getSettings, isChannelKey, KEY } from '../shared/storage';
-import type { ChannelRecord, Overrides } from '../shared/types';
+import type { ChannelRecord } from '../shared/types';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const local = chrome.storage.local;
@@ -144,23 +144,22 @@ async function importJson(file: File): Promise<void> {
   const parsed = parseBackup(await file.text());
   if (!parsed.ok) return status(parsed.error, true);
   const { backup, skipped } = parsed;
-  const overrides: Overrides = { ...(await getOverrides()), ...backup.overrides };
-  const writes: Record<string, unknown> = { [KEY.settings]: backup.settings, [KEY.overrides]: overrides };
-  for (const [id, rec] of Object.entries(backup.channels)) writes[KEY.channel(id)] = rec;
-  await local.set(writes);
-  settings = backup.settings;
+  // Channel data goes through the service worker's queue so it can't race with a tab writing at the same time.
+  const done = await sendToSw<{ marks: number; channels: number }>({ type: 'importData', overrides: backup.overrides, channels: backup.channels });
+  if (!done) return status('Import failed: Botless could not save the data. Try again.', true);
+  // Active mode is a privacy choice: an imported file (maybe someone else's) never switches it on or off.
+  settings = { ...backup.settings, youtubeRequests: settings.youtubeRequests };
+  await local.set({ [KEY.settings]: settings });
   fillForm();
-  const n = Object.keys(backup.channels).length;
   status(
-    `Imported settings, ${Object.keys(backup.overrides).length} marks and ${n} channels${skipped ? ` (${skipped} invalid entries skipped)` : ''}.`,
+    `Imported settings (Active mode left as it was), ${done.marks} marks and ${done.channels} channels${skipped ? ` (${skipped} invalid entries skipped)` : ''}.`,
   );
 }
 
 async function clearObservations(): Promise<void> {
   if (!confirm('Forget everything Botless observed about channels? Your own marks and settings are kept.')) return;
-  const keys = Object.keys(await allChannels()).map(KEY.channel);
-  await local.remove([...keys, KEY.vmap, KEY.stats]);
-  status(`Cleared ${keys.length} channels.`);
+  const done = await sendToSw<{ channels: number }>({ type: 'clearObservations' });
+  status(done ? `Cleared ${done.channels} channels.` : 'Could not clear the data. Try again.', !done);
 }
 
 // ---- Boot ----

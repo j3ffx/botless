@@ -111,6 +111,25 @@ async function handle(msg: SwRequest): Promise<unknown> {
     case 'checkPermit':
       return serial(() => checkPermit());
 
+    case 'importData':
+      // Imported marks win over existing ones for the same channel; imported channels replace their records.
+      return serial(async () => {
+        const overrides = { ...(await getOverrides()), ...msg.overrides };
+        const writes: Record<string, unknown> = { [KEY.overrides]: overrides };
+        for (const [id, rec] of Object.entries(msg.channels)) writes[KEY.channel(id)] = rec;
+        await local.set(writes);
+        await enforceQuota();
+        return { marks: Object.keys(msg.overrides).length, channels: Object.keys(msg.channels).length };
+      });
+
+    case 'clearObservations':
+      // Marks, settings and today's check count (which enforces the daily limit) are kept.
+      return serial(async () => {
+        const keys = Object.keys(await local.get(null)).filter(isChannelKey);
+        await local.remove([...keys, KEY.vmap, KEY.stats]);
+        return { channels: keys.length };
+      });
+
     case 'checkFailed':
       // Rate limited, blocked, redirected or unreachable (status 0), or YouTube having trouble: pause everyone.
       if (msg.status === 0 || msg.status === 429 || msg.status === 403 || msg.status >= 500) {

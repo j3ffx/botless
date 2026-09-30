@@ -7,7 +7,9 @@
 // Get a Chrome for Testing binary with: npx @puppeteer/browsers install chrome@stable
 // (branded Chrome ignores --load-extension since v137). Nothing here touches the real youtube.com:
 // every request is intercepted and answered locally.
-import { resolve } from 'node:path';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import puppeteer from 'puppeteer-core';
 
 const executablePath = process.env.CHROME_PATH;
@@ -107,6 +109,34 @@ try {
   await options.goto(`chrome-extension://${extId}/options.html`, { waitUntil: 'networkidle0' });
   check((await options.$$('input, select')).length > 5, 'Settings page renders its controls');
   check(optionsRequests.length === 0, `Settings loads nothing from outside the extension${optionsRequests.length ? `: ${optionsRequests.join(', ')}` : ''}`);
+
+  // Import someone else's backup: marks and channels arrive, but their Active mode choice must not.
+  const MARKED = 'UCmarkedmarkedmarkedmark';
+  const OBSERVED = 'UCobservedobservedobserv';
+  const backupFile = join(mkdtempSync(join(tmpdir(), 'botless-')), 'backup.json');
+  writeFileSync(
+    backupFile,
+    JSON.stringify({
+      app: 'botless-youtube',
+      version: 1,
+      exportedAt: 'not a date',
+      settings: { youtubeRequests: true },
+      overrides: { [MARKED]: { verdict: 'ai', at: 1 } },
+      channels: { [OBSERVED]: { videos: { ZneqyXsgpO4: 1 }, firstSeen: 1, lastSeen: Date.now() } },
+    }),
+  );
+  const status = () => options.$eval('#data-status', (el) => el.textContent);
+  await (await options.$('#import-file')).uploadFile(backupFile);
+  await options.waitForFunction(() => document.querySelector('#data-status')?.textContent, { timeout: 5_000 });
+  const imported = await storage(['settings', 'overrides', `c:${OBSERVED}`]);
+  check(!!imported.overrides?.[MARKED] && !!imported[`c:${OBSERVED}`], `import restores marks and channels (${await status()})`);
+  check(imported.settings?.youtubeRequests === false, 'import leaves Active mode off');
+
+  options.on('dialog', (d) => d.accept());
+  await options.click('#clear-obs');
+  await options.waitForFunction(() => /Cleared/.test(document.querySelector('#data-status')?.textContent ?? ''), { timeout: 5_000 });
+  const cleared = await storage(['overrides', `c:${OBSERVED}`]);
+  check(!cleared[`c:${OBSERVED}`] && !!cleared.overrides?.[MARKED], 'Clear observations forgets channels and keeps marks');
   check(optionsErrors.length === 0, `Settings has no errors${optionsErrors.length ? `: ${optionsErrors.join(' | ')}` : ''}`);
   await options.close();
 

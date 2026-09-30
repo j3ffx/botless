@@ -7,6 +7,7 @@
  * - Service worker requests are checked again on arrival (defence in depth), with every list capped, so a
  *   compromised content script can't write arbitrary shapes or sizes into storage.
  */
+import { cleanChannels, cleanOverrides } from './backup';
 import { CHANNEL_ID_RE, VIDEO_ID_RE, videoIdFromHref } from './extract';
 import type { SwRequest } from './messages';
 import type { Disclosure, PageInfo, PageType } from './types';
@@ -90,6 +91,10 @@ export function parseSwRequest(raw: unknown): SwRequest | null {
       return Number.isInteger(raw.status) && (raw.status as number) >= 0 && (raw.status as number) < 1000
         ? { type: 'checkFailed', status: raw.status as number }
         : null;
+    case 'importData':
+      return { type: 'importData', overrides: cleanOverrides(raw.overrides).overrides, channels: cleanChannels(raw.channels).channels };
+    case 'clearObservations':
+      return { type: 'clearObservations' };
     default:
       return null;
   }
