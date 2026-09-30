@@ -249,8 +249,8 @@ Dev-only helpers (not shipped):
 - Shorts player: channel ID and disclosure detected from the `yt-navigate-finish` data.
 - Everything above, plus the Shorts overlay pill, auto-skip to the next video in a playlist (signed
   in), "Latest Shorts from X" badging, background checks, the popup and Settings, both themes and
-  scrolling performance, was then confirmed manually in real Chrome, signed in, with YouTube in
-  French. The full manual test plan is in [`docs/TESTING.md`](docs/TESTING.md).
+  scrolling performance, was then confirmed manually in real Chrome, signed in. The full manual test plan
+  is in [`docs/TESTING.md`](docs/TESTING.md).
 
 ## Known limitations
 
@@ -259,9 +259,9 @@ Dev-only helpers (not shipped):
 - Shorts tiles carry no channel data. They are badged on the channel's own page, in search "Latest
   Shorts from X" shelves, when the video was already seen elsewhere, or once a background check
   (Active mode) has looked the Short up. Without Active mode, mixed Shorts shelves stay unbadged.
-- Detection works with a French YouTube UI (verified manually). That's thanks to the
-  language-independent help-article-ID match; the localized header *text* fallback itself remains
-  unverified.
+- Detection works whatever YouTube's UI language (verified manually with a non-English one). That's
+  thanks to the language-independent help-article-ID match; the localized header *text* fallback itself
+  remains unverified.
 - YouTube markup changes. All selectors are listed in `docs/YOUTUBE-DOM.md` and kept in a few constants
   (`TILE_SELECTOR`, `THUMB`, `ITEM_ROOT`, `OWNER_TARGET`).
 

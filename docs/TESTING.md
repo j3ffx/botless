@@ -3,7 +3,7 @@
 The extension can only be fully tested in a **real Chrome** with the unpacked build loaded. Automated tests
 (`npm test`) cover the pure logic. Selectors and flows need YouTube itself.
 
-Last full pass: 2026-09-29 (Chrome, signed in to YouTube, French UI): all steps passed. Rerun the relevant
+Last full pass: 2026-09-29 (Chrome, signed in to YouTube): all steps passed. Rerun the relevant
 steps after any change to the bridge, the content script or the selectors.
 
 ## Setup

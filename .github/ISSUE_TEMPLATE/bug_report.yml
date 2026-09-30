@@ -41,7 +41,7 @@ body:
     attributes:
       label: YouTube language
       description: The language YouTube's interface is shown in (it changes some of the page's text).
-      placeholder: English, Français…
+      placeholder: English, Español, 日本語…
   - type: dropdown
     id: active
     attributes:

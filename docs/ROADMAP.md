@@ -9,7 +9,7 @@ rejected on purpose.
 |---|---|---|
 | 2026-09-28 | Judge the **channel**. A video that itself carries YouTube's AI label is also AI on its own tile or page, but that doesn't change the channel verdict. | Spec: channel verdicts. The per-video rule was added because AI Shorts polluted feeds while their channels were still unjudged. |
 | 2026-09-28 | Auto-dubbed videos (`answer/15569972`) never count as AI. | They share the "How this was made" section. Counting them would flag many ordinary channels (4 of 5 in one sample). |
-| 2026-09-28 | Match the label by help-article ID first, text second. | Language independent. Verified with a French YouTube UI. |
+| 2026-09-28 | Match the label by help-article ID first, text second. | Language independent. Verified with a non-English YouTube UI. |
 | 2026-09-28 | Don't use the YouTube Data API. | Needs a key, network and permissions. The page already has the label (`docs/YOUTUBE-DOM.md` §4). |
 | 2026-09-28 | Background checks go to youtube.com only, **without cookies**, 3 s apart (fixed), with a daily limit (setting, default 150). | Cookieless requests can't touch the account or history. Request *rate* is what bot detection reacts to, so the spacing isn't user-tunable. 150 is a cautious guess: YouTube publishes no limit. |
 | 2026-09-28 | One labeled video never makes a channel "Probably AI" (needs 2 of 2 by default). Checks confirm a first label with one more video from the channel's RSS feed. | The newest We R Cinephiles Short had no label although others did. |

@@ -208,7 +208,7 @@ Observations:
 > not reliably in practice, and hiding *Probably AI* videos covers the need. The notes stay here as a record of
 > how YouTube exposes these actions.
 
-Verified 2026-09-28 on a signed-in home feed with a French UI. A signed-out session doesn't have the item at
+Verified 2026-09-28 on a signed-in home feed. A signed-out session doesn't have the item at
 all: logged-out menus only offer queue, save and share.
 
 **Data.** Every home-feed `yt-lockup-view-model` carries its ⋮ menu inline:
