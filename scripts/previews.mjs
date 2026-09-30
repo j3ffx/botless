@@ -14,7 +14,7 @@ const seed = {
     'UCHnyfMqiRRG1u-2MsSQLbXA': { verdict: 'human', name: 'Veritasium', at: now - 86400e3 * 3 },
     UCaiaiaiaiaiaiaiaiaiaiai: { verdict: 'ai', name: 'Lofi Dream Machine 24/7', at: now - 86400e3 },
   },
-  [`c:${CID}`]: { id: CID, name: 'We R Cinephiles', videos: { ZneqyXsgpO4: 1, GtSpreu25u8: 1, abcdefghijk: 1 }, firstSeen: now, lastSeen: now },
+  [`c:${CID}`]: { id: CID, name: 'Endless AI Lofi', videos: { ZneqyXsgpO4: 1, GtSpreu25u8: 1, abcdefghijk: 1 }, firstSeen: now, lastSeen: now },
 };
 
 const shim = (pageInfo) => `
@@ -56,7 +56,7 @@ const shim = (pageInfo) => `
   };
 })();`;
 
-const page = { pageType: 'watch', url: 'x', videoId: 'ZneqyXsgpO4', channelId: CID, channelName: 'We R Cinephiles', disclosure: 'ai' };
+const page = { pageType: 'watch', url: 'x', videoId: 'ZneqyXsgpO4', channelId: CID, channelName: 'Endless AI Lofi', disclosure: 'ai' };
 writeFileSync('dist-test/shim-popup.js', shim(page));
 
 for (const name of ['popup', 'options']) {
@@ -76,7 +76,7 @@ const block = (dark) => `
     <div class="thumb botless-anchor botless-fade"><span class="botless-badge botless-ai"><span class="botless-dot"></span>Probably AI</span></div>
   </div>
   <p class="cap">Badge on thumbnails · last tile uses “Fade”</p>
-  <div class="owner">We R Cinephiles
+  <div class="owner">Endless AI Lofi
     <span class="botless-owner botless-ai"><span class="botless-dot"></span>Probably AI</span>
     <span class="botless-owner botless-inconclusive"><span class="botless-dot"></span>Inconclusive</span>
     <span class="botless-owner botless-human"><span class="botless-dot"></span>Probably Human</span>
