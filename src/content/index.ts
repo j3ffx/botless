@@ -185,7 +185,8 @@ function pass(): void {
     const vid = isVideoId(el.dataset.botlessVid) ? el.dataset.botlessVid : undefined;
     let cid = isChannelId(el.dataset.botlessCid) ? el.dataset.botlessCid : undefined;
     // Pairs read from YouTube's data are remembered; ones the bridge inferred from context are only displayed.
-    if (vid && cid && vmap[vid] !== cid && !el.dataset.botlessInferred) pendingPairs.set(vid, cid);
+    // With Botless off, nothing is learned (the bridge still stamps tiles: it can't read the settings).
+    if (settings.enabled && vid && cid && vmap[vid] !== cid && !el.dataset.botlessInferred) pendingPairs.set(vid, cid);
     cid ??= vid ? vmap[vid] : undefined;
     if (!settings.enabled || !cid || !el.dataset.botlessKey) {
       // Channel-less tile (a Short): checking its video reveals both its channel and its AI label.
