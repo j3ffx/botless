@@ -226,7 +226,7 @@ rawProps.data().metadata.lockupMetadataViewModel.menuButton.buttonViewModel.onTa
 We identify the item by `imageName: "REMOVE"` plus the presence of a `feedbackToken`, never by its text.
 16 of 21 home tiles had it; the rest were mixes and playlists. Scanning all tiles took 7 ms.
 
-**UI path used by the bridge.**
+**UI path the removed feature used.**
 
 1. The menu button is `.ytLockupMetadataViewModelMenuButton button` (aria-label "Autres actions" / "More actions").
 2. Clicking it opens `tp-yt-iron-dropdown` › `yt-sheet-view-model` › `yt-list-item-view-model` items. Each
@@ -235,7 +235,7 @@ We identify the item by `imageName: "REMOVE"` plus the presence of a `feedbackTo
 3. Search only inside **opened** dropdowns. YouTube keeps old menus' items in the DOM.
 4. Close with the dropdown's own `close()`. A synthetic `Escape` keydown did **not** close it (verified).
 5. In a hidden tab, the dropdown opens (`opened: true`) but doesn't lay out (`display: none`, zero-height
-   items). So we don't run in hidden tabs at all.
+   items). So the removed feature didn't run in hidden tabs at all.
 
 Dry-run results (menu opened invisibly, item found, closed without clicking) on three different tiles: the
 item was found within 50 ms each time and the menu closed cleanly.

@@ -141,26 +141,39 @@ into `data-botless-*` attributes, and it reports the current page's video, chann
 DOM event. It can't access
 `chrome.*`, doesn't touch storage, and makes no requests. Because it runs in the page, YouTube's own
 scripts could in principle see those attributes and events. They only contain facts YouTube already has
-(which video is on screen). **Your verdicts and marks never enter the page context.**
+(which video is on screen).
+
+The badges themselves are part of the page too, as anything shown on it must be. So YouTube's scripts, or
+another extension, could see which tiles Botless badged, faded or hid, and read a badge's tooltip (for example
+"You marked this channel"). Your stored data itself (all your marks, your history of observed channels, your
+settings) never enters the page.
+
+The reverse direction is treated as untrusted: any script in the page could forge the bridge's events or
+attributes. The content script only accepts well-formed information about the video actually in the address
+bar, and the service worker validates every message again ([`src/shared/validate.ts`](src/shared/validate.ts)).
 
 ## Privacy
 
 - By default Botless makes **no network requests** of its own. The only `fetch` calls are in
   `src/content/checker.ts`, and they run only while **Active mode** is on. They go to
-  `www.youtube.com` only, without cookies. There is no remote code and no analytics. You can check with
-  `grep -rnE "fetch\(|XMLHttpRequest|WebSocket" src/`.
+  `www.youtube.com` only, without cookies, and never follow a redirect to another host. There is no remote
+  code and no analytics. CI enforces this on every change: `tests/invariants.test.ts` reads the source for
+  any way of making a request, `scripts/check-dist.mjs` checks the shipped files, and the smoke test fails if
+  anything is requested while Active mode is off.
 - Everything is stored in `chrome.storage.local`:
 
   | Key | Contents | Lifetime |
   |---|---|---|
   | `settings` | your preferences | until changed |
   | `overrides` | channels you marked AI/Human | forever (remove in Options) |
-  | `c:<channelId>` | video IDs you watched from that channel + label yes/no (last 200), cached verdict | cache re-checked after 7 days; channel forgotten after 180 days unseen |
+  | `c:<channelId>` | video IDs you watched from that channel + label yes/no (last 200), cached verdict | verdict recomputed locally after 7 days (no request); channel forgotten after 180 days unseen, or earlier if storage passes 70% of Chrome's quota (least recently seen first) |
   | `vmap` | video → channel pairs, used to badge channel-less Shorts tiles | newest 3000 |
   | `stats` | today's flagged video IDs, for the counter | reset daily |
   | `checks` | number of background checks today, plus any pause | reset daily |
+  | `maint` | when channels were last purged | overwritten daily |
 
-- **Clear observations** in Options wipes everything except your settings and marks.
+- **Clear observations** in Options forgets every observed channel, the video map and today's flagged count.
+  It keeps your settings, your marks, and today's background-check count (which enforces the daily limit).
 
 ## YouTube Data API
 
@@ -179,7 +192,8 @@ src/
   content/badges.ts       thumbnail badge + fade/hide
   content/watch.ts        owner pill, toast, Undo, skip
   content/checker.ts      opt-in background checks: queue + fetch (youtube.com, no cookies)
-  background/sw.ts        service worker: the single, serialized writer for all storage + global check rate limit
+  background/sw.ts        service worker: the single, serialized writer for channel data, marks and the video map
+                          (settings are written by the popup and options pages) + global check rate limit
   popup/, options/        vanilla TS UI (no framework needed at this size)
   shared/scoring.ts       ★ pure verdict model
   shared/verdict.ts       cache/TTL + observation bookkeeping (pure)
@@ -187,12 +201,16 @@ src/
   shared/extract.ts       channel/video ID extraction (pure)
   shared/backup.ts        export/import validation (pure)
   shared/check.ts         background-check parsing + "what does this channel need next" (pure)
+  shared/validate.ts      validation of page data and service worker messages (pure)
+  shared/retention.ts     which channels to drop when storage fills up (pure)
 ```
 
 **Performance.** The MutationObserver callback only sets a flag. Work runs at most every ~150 ms via
 `requestIdleCallback`. Each pass compares one `href` per tile and skips tiles that haven't changed, and
-DOM writes are batched in `requestAnimationFrame`. Nothing runs in hidden tabs. Storage writes go through
-the service worker in batches of up to 2 seconds. The bundles are about 46 KB in total, minified.
+layout reads are done before the DOM writes, which are batched in `requestAnimationFrame`. A change to one
+channel only re-renders that channel's tiles. Badges and checks don't run in hidden tabs (the bridge still
+stamps tiles there). Storage writes go through the service worker in batches of up to 2 seconds. The bundles
+are about 52 KB in total, minified.
 
 ## Development
 

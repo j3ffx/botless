@@ -1,5 +1,6 @@
 // Dev-only: generates dist-test/*.html previews of the popup, options page and injected UI, backed by a
-// fake chrome.* API with realistic seeded data. Open them from disk in any browser. Run after `npm run build`.
+// fake chrome.* API with realistic seeded data. Run after `npm run build`, then serve them over HTTP with
+// `node scripts/serve-harness.mjs` (opening them from disk can break the relative scripts).
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 
 mkdirSync('dist-test', { recursive: true });

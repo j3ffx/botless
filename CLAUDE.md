@@ -59,7 +59,11 @@ BREAKING CHANGE: … (when relevant)
   commit type. Chrome only accepts plain `X.Y.Z` versions: no `-beta` suffixes. Run the Release workflow
   by hand for a dry run that publishes nothing.
 - `npm run release-notes` previews the notes of the next release.
-- **Dependabot** opens grouped weekly PRs for npm and monthly ones for Actions.
+- **Dependabot** opens grouped weekly PRs for npm and monthly ones for Actions, 7 days after a release
+  (security fixes immediately). Actions are pinned to commit SHAs.
+- **Chrome:** required CI pins a Chrome for Testing build (`CHROME_VERSION` in `ci.yml`). The weekly
+  `chrome-latest.yml` runs the smoke test on the newest Chrome and says when to move the pin. It never
+  blocks a merge.
 
 ## Invariants (discuss before changing)
 
@@ -83,6 +87,8 @@ discuss it first, then update the test in the same commit.
   `botless:scan`, `botless:request-page`).
 - Only trust `browseEndpoint.browseId` for channel IDs, never a `/UC.{22}/` regex (tracking params match
   it).
+- **The page is untrusted.** Any script in YouTube's page can forge `botless:*` events and `data-botless-*`
+  attributes. Validate whatever crosses from the page or arrives as a message with `src/shared/validate.ts`.
 - When a selector or data path changes, verify it on live YouTube first, then update
   `docs/YOUTUBE-DOM.md`.
 
