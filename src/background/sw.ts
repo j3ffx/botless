@@ -7,6 +7,7 @@
 import { CHECK_BACKOFF_MS, CHECK_SPACING_MS } from '../shared/check';
 import type { ChannelSummary, CheckPermit, SwRequest } from '../shared/messages';
 import { checksOn, DEFAULT_SETTINGS } from '../shared/settings';
+import { parseSwRequest } from '../shared/validate';
 import {
   getChannels,
   getCheckStats,
@@ -137,7 +138,15 @@ async function checkPermit(): Promise<CheckPermit> {
   return { ok: true };
 }
 
-chrome.runtime.onMessage.addListener((msg: SwRequest, _sender, reply) => {
+chrome.runtime.onMessage.addListener((raw: unknown, sender, reply) => {
+  // Only Botless's own pages and content scripts; web pages can't reach us (no externally_connectable) anyway.
+  if (sender.id !== chrome.runtime.id) return false;
+  // Rebuilt from validated fields only: a compromised content script can't write arbitrary data to storage.
+  const msg = parseSwRequest(raw);
+  if (!msg) {
+    reply({ error: 'invalid request' });
+    return false;
+  }
   handle(msg).then(reply, (err) => reply({ error: String(err) }));
   return true; // async reply
 });

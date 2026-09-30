@@ -135,6 +135,15 @@ try {
   await new Promise((r) => setTimeout(r, 4_000)); // longer than the check spacing: Active mode would have fired
   check(requests.length === 0, `no requests with Active mode off${requests.length ? `: ${requests.join(', ')}` : ''}`);
 
+  // A page script forging the bridge's event (another extension, an injected script…) must not write anything.
+  const FORGED = 'UCforgedforgedforgedforg';
+  await yt.evaluate((cid) => {
+    for (const url of [location.href, 'https://www.youtube.com/watch?v=aaaaaaaaaaa'])
+      document.dispatchEvent(new CustomEvent('botless:page', { detail: JSON.stringify({ pageType: 'watch', url, videoId: 'aaaaaaaaaaa', channelId: cid, disclosure: 'ai' }) }));
+  }, FORGED);
+  await new Promise((r) => setTimeout(r, 500));
+  check(!(await storage(`c:${FORGED}`))[`c:${FORGED}`], 'a forged page event records nothing');
+
   // Control: with Active mode on, the unknown channel's video *is* checked. Proves the watcher above works.
   const { settings } = await storage('settings');
   await sw.evaluate((s) => chrome.storage.local.set({ settings: { ...s, youtubeRequests: true } }), settings);

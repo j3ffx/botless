@@ -7,6 +7,7 @@ import { isSwError, type ChannelSummary, type SwRequest, type TabRequest, type T
 import { checksOn, normalizeSettings, type Settings } from '../shared/settings';
 import { getChannels, getOverrides, getSettings, getVmap, isChannelKey, KEY } from '../shared/storage';
 import type { ChannelRecord, Overrides, PageInfo, VerdictResult } from '../shared/types';
+import { isChannelId, isVideoId, parsePageInfo } from '../shared/validate';
 import { resolveVerdict, withVideoLabel } from '../shared/verdict';
 import { checkNeed } from '../shared/check';
 import { applyTile, clearTile, hasBadge } from './badges';
@@ -167,8 +168,9 @@ function pass(): void {
   if (!alive()) return;
   const tiles = document.querySelectorAll<HTMLElement>('[data-botless-key], [data-botless-applied]');
   for (const el of tiles) {
-    const vid = el.dataset.botlessVid;
-    let cid = el.dataset.botlessCid;
+    // The page can set these attributes too: only well-formed IDs are used (and learned).
+    const vid = isVideoId(el.dataset.botlessVid) ? el.dataset.botlessVid : undefined;
+    let cid = isChannelId(el.dataset.botlessCid) ? el.dataset.botlessCid : undefined;
     if (vid && cid && vmap[vid] !== cid) pendingPairs.set(vid, cid);
     cid ??= vid ? vmap[vid] : undefined;
     if (!settings.enabled || !cid || !el.dataset.botlessKey) {
@@ -253,11 +255,14 @@ async function onPage(info: PageInfo): Promise<void> {
 function onPageEvent(e: Event): void {
   const detail = (e as CustomEvent<string>).detail;
   if (typeof detail !== 'string' || !alive()) return;
+  // Any script in the page can dispatch this event: accept only well-formed info about the page actually shown.
+  let info: PageInfo | null = null;
   try {
-    void onPage(JSON.parse(detail) as PageInfo);
+    info = parsePageInfo(JSON.parse(detail), location.href);
   } catch {
-    /* ignore malformed */
+    /* not JSON */
   }
+  if (info) void onPage(info);
 }
 function onNavigateStart(): void {
   cancelSkip();
