@@ -48,6 +48,22 @@ function watchErrors(page, label) {
   return errors;
 }
 
+/**
+ * Extension pages may only load their own files. Anything else is blocked (the test stays offline) and recorded.
+ * Call before goto().
+ */
+async function watchRequests(page, extId) {
+  const outside = [];
+  await page.setRequestInterception(true);
+  page.on('request', (req) => {
+    const url = req.url();
+    if (url.startsWith(`chrome-extension://${extId}/`) || url.startsWith('data:') || url.startsWith('blob:')) return req.continue();
+    outside.push(`${req.method()} ${url}`);
+    return req.abort();
+  });
+  return outside;
+}
+
 const browser = await puppeteer.launch({
   executablePath,
   headless: true,
@@ -68,6 +84,7 @@ try {
   // ---- Popup ----
   const popup = await browser.newPage();
   const popupErrors = watchErrors(popup, 'popup');
+  const popupRequests = await watchRequests(popup, extId);
   await popup.goto(`chrome-extension://${extId}/popup.html`, { waitUntil: 'networkidle0' });
   check((await popup.$$('input[type="checkbox"]')).length === 2, 'popup shows its two switches');
   check(await popup.$eval('#enabled', (el) => el.checked), 'Botless is on by default');
@@ -80,13 +97,16 @@ try {
   await new Promise((r) => setTimeout(r, 200));
   check((await storage('settings')).settings?.enabled === true, 'turning it back on is saved');
   check(popupErrors.length === 0, `popup has no errors${popupErrors.length ? `: ${popupErrors.join(' | ')}` : ''}`);
+  check(popupRequests.length === 0, `popup loads nothing from outside the extension${popupRequests.length ? `: ${popupRequests.join(', ')}` : ''}`);
   await popup.close();
 
   // ---- Settings ----
   const options = await browser.newPage();
   const optionsErrors = watchErrors(options, 'options');
+  const optionsRequests = await watchRequests(options, extId);
   await options.goto(`chrome-extension://${extId}/options.html`, { waitUntil: 'networkidle0' });
   check((await options.$$('input, select')).length > 5, 'Settings page renders its controls');
+  check(optionsRequests.length === 0, `Settings loads nothing from outside the extension${optionsRequests.length ? `: ${optionsRequests.join(', ')}` : ''}`);
   check(optionsErrors.length === 0, `Settings has no errors${optionsErrors.length ? `: ${optionsErrors.join(' | ')}` : ''}`);
   await options.close();
 
