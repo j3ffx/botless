@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Botless for YouTube",
   "short_name": "Botless",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Judges each YouTube channel as Probably Human, Probably AI or Inconclusive. Badge, fade, hide or auto-skip. Runs locally.",
   "homepage_url": "https://github.com/j3ffx/botless",
   "minimum_chrome_version": "111",
