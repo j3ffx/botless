@@ -23,10 +23,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false # nothing here pushes; don't leave the token in .git/config for npm scripts
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -35,7 +35,7 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npm run check:dist
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: botless-dist
           path: dist/
@@ -48,16 +48,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       # Test the exact files that were built and checked above.
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: botless-dist
           path: dist/
@@ -65,9 +65,13 @@ jobs:
       # than running Chrome with --no-sandbox.
       - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       # Branded Chrome ignores --load-extension since v137; Chrome for Testing still honours it.
+      # Pinned so required CI is deterministic; chrome-latest.yml tries the newest Chrome weekly and flags when
+      # this pin should move (then update CHROME_VERSION here).
       - name: Install Chrome for Testing
+        env:
+          CHROME_VERSION: '154.0.8037.57'
         run: |
-          path=$(npx @puppeteer/browsers install chrome@stable --path "$RUNNER_TEMP/browsers" | tail -n 1 | cut -d' ' -f2-)
+          path=$(npx @puppeteer/browsers install "chrome@$CHROME_VERSION" --path "$RUNNER_TEMP/browsers" | tail -n 1 | cut -d' ' -f2-)
           echo "CHROME_PATH=$path" >> "$GITHUB_ENV"
           "$path" --version
       - run: npm run smoke
@@ -77,11 +81,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .nvmrc
       - name: Check commit messages

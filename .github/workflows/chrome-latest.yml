@@ -1,0 +1,35 @@
+# Weekly early warning: the smoke test against the newest Chrome for Testing. Required CI pins a Chrome version
+# (ci.yml → CHROME_VERSION) so it stays deterministic; this job says when a new Chrome breaks Botless, or when
+# the pin can move. It never blocks a merge.
+name: Chrome latest
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Smoke test in the newest Chrome
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Install the newest Chrome for Testing
+        run: |
+          path=$(npx @puppeteer/browsers install chrome@stable --path "$RUNNER_TEMP/browsers" | tail -n 1 | cut -d' ' -f2-)
+          echo "CHROME_PATH=$path" >> "$GITHUB_ENV"
+          echo "Tested with $("$path" --version); ci.yml pins $(grep -oE "CHROME_VERSION: '[^']+'" .github/workflows/ci.yml)" >> "$GITHUB_STEP_SUMMARY"
+      - run: npm run smoke
