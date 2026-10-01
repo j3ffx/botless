@@ -15,6 +15,7 @@ npm run typecheck    # tsc --noEmit
 npm test             # vitest: unit tests + tests/invariants.test.ts (the invariants below)
 npm run verify       # all of the above + check:dist (what's shipped: files, no eval/source maps, size budget)
 npm run smoke        # dist/ in real Chrome, offline (needs CHROME_PATH, see below)
+npm run live-test -- --release X.Y.Z   # a release zip on REAL YouTube (manual only, ~3 min; see below)
 ```
 
 Run `npm run verify` before every commit. `npm install` also points git at `.githooks/`, whose
@@ -54,7 +55,10 @@ BREAKING CHANGE: … (when relevant)
   extension is kept 14 days as the `botless-dist` artifact (unzip it, then load it unpacked).
 - **Release:** `npm version patch|minor|major` re-runs `verify`, bumps `package.json` *and*
   `manifest.json`, commits `chore(release): X.Y.Z` and tags `vX.Y.Z`. Then
-  `git push --follow-tags`. The tag runs `.github/workflows/release.yml`: full CI again, then a GitHub
+  `git push --follow-tags`. Before handing a release over for the store, run
+  `npm run live-test -- --release X.Y.Z`: the published zip on live YouTube, signed out. Not too often in a
+  row and not over a VPN (YouTube's robot check). A "feeds are down" skip is YouTube's problem, not a
+  failure. The tag runs `.github/workflows/release.yml`: full CI again, then a GitHub
   Release with `botless-X.Y.Z.zip` (the file to upload to the Chrome Web Store) and notes grouped by
   commit type. Chrome only accepts plain `X.Y.Z` versions: no `-beta` suffixes. Run the Release workflow
   by hand for a dry run that publishes nothing.

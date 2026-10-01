@@ -70,6 +70,12 @@ Search `We R Cinephiles` for a "Latest Shorts from X" shelf. Their Shorts tab is
 - `youtube.com/feed/history` shows none of the checked videos (requests are sent without cookies).
 - Turning Active mode off stops the counter.
 
+## Automated part, on live YouTube
+
+`npm run live-test -- --release X.Y.Z` (or a folder, default `dist/`) runs steps 2, 3, part of 4, Active
+mode and "Botless off" in Chrome for Testing, signed out, in about 3 minutes. It doesn't replace this plan:
+nothing signed in, no auto-skip, Shorts player, themes or scrolling feel.
+
 ## Quicker checks without installing
 
 See `CLAUDE.md` → *Verifying changes without installing the extension* (live harness, popup and options
