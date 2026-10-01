@@ -61,8 +61,8 @@ BREAKING CHANGE: … (when relevant)
 - `npm run release-notes` previews the notes of the next release.
 - **Project site:** `site/` is published to https://j3ffx.github.io/botless/ by `.github/workflows/pages.yml`, with
   `privacy.html` filled in from `PRIVACY.md` (`scripts/build-site.mjs`). Never delete
-  `site/google*.html`: it's the Google Search Console ownership file that keeps the site verified as the
-  store listing's Official URL.
+  `site/google*.html` or the `google-site-verification` meta tag in `site/index.html`: they're the two Google
+  Search Console ownership proofs that keep the site verified as the store listing's Official URL.
 - **Dependabot** opens grouped weekly PRs for npm and monthly ones for Actions, 7 days after a release
   (security fixes immediately). Actions are pinned to commit SHAs.
 - **Chrome:** required CI pins a Chrome for Testing build (`CHROME_VERSION` in `ci.yml`). The weekly
