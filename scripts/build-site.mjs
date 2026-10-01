@@ -20,10 +20,22 @@ const res = await fetch('https://api.github.com/markdown', {
 if (!res.ok) throw new Error(`GitHub Markdown API answered ${res.status}: ${await res.text()}`);
 
 // Links relative to the repository (README.md#privacy, SECURITY.md) point at the files on GitHub.
-const body = (await res.text()).replace(
+let body = (await res.text()).replace(
   /href="(?!https?:|#|mailto:)([^"]+)"/g,
   (_, path) => `href="https://github.com/${REPO}/blob/main/${path}"`,
 );
+
+// On phones, style.css shows each table row as a card: every cell gets its column heading as a label.
+const text = (html) => html.replace(/<[^>]+>/g, '').trim();
+body = body.replace(/<table[\s\S]*?<\/table>/g, (table) => {
+  const labels = [...table.matchAll(/<th[^>]*>([\s\S]*?)<\/th>/g)].map((m) => text(m[1]).replace(/"/g, '&quot;'));
+  return table.replace(/<tr>([\s\S]*?)<\/tr>/g, (row, cells) => {
+    let i = 0;
+    return `<tr>${cells.replace(/<td(?=[\s>])/g, () => `<td data-label="${labels[i++] ?? ''}"`)}</tr>`;
+  });
+});
+// The first list is "The short version": shown as a summary box.
+body = body.replace('<ul>', '<ul class="summary">');
 
 const page = join(OUT, 'privacy.html');
 const html = readFileSync(page, 'utf8');
