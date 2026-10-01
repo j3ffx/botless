@@ -96,7 +96,9 @@ Results count exactly like videos you watched. The limits:
 - **Slow on purpose:** one request at a time, at least 3 seconds apart across all tabs. The spacing is
   fixed, because request rate is what bot detection reacts to. The daily total is a setting: 150 by
   default (roughly 50–150 channels), adjustable from 10 to 1000 in Settings. That default is a cautious
-  guess, since YouTube publishes no limit. If YouTube answers 429/403/5xx, checks pause for 15 minutes.
+  guess, since YouTube publishes no limit. If YouTube answers 429/403/5xx, checks pause for 15 minutes. The
+  channel feed is the exception: it's often down (404 or 5xx), so a failed feed only skips that
+  confirmation, and only 429/403 from it pause the checks.
 - Only on-screen tiles, only channels with no data yet (or Shorts whose channel is unknown), never channels
   you marked, and never in background tabs.
 

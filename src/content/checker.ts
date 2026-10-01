@@ -190,7 +190,9 @@ export function createChecker(deps: CheckerDeps) {
         redirect: 'error',
       });
       if (res.ok) feed = parseChannelFeed(await res.text());
-      else void deps.send({ type: 'checkFailed', status: res.status });
+      // YouTube's RSS feeds are often down (404 or 5xx for channels that exist): that only skips this
+      // confirmation. Rate limiting or blocking is still reported, so every tab pauses.
+      else if (res.status === 429 || res.status === 403) void deps.send({ type: 'checkFailed', status: res.status });
     } catch {
       networkFailed();
     }

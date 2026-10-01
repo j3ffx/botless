@@ -194,6 +194,9 @@ Verified 2026-09-28 from a youtube.com page, with `credentials: "omit"` (no cook
 
 Observations:
 
+- The channel feed is unreliable. On 2026-10-01 it answered 404 for every channel tried (including ones that
+  had answered 200 an hour earlier) and once 500. A failed feed therefore only skips that channel's
+  confirmation; only 429 and 403 pause the checks.
 - Unlabeled videos still include `structuredDescriptionContentRenderer`. Its absence therefore means "format
   changed", not "no label", and in that case nothing is recorded.
 - The client version must look current. The bridge copies the page's `ytcfg INNERTUBE_CLIENT_VERSION` into

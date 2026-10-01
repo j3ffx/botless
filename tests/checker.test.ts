@@ -41,6 +41,8 @@ function setup(opts: {
   feed?: string[];
   permit?: () => object;
   status?: number;
+  /** HTTP status of the channel feed (YouTube's RSS feeds fail with 404 or 5xx now and then). */
+  feedStatus?: number;
   throws?: boolean;
   /** The page is left mid-request (reload, full navigation): the browser aborts the fetch. */
   leaves?: boolean;
@@ -67,6 +69,7 @@ function setup(opts: {
       if (opts.throws || opts.leaves || opts.leavesLate) throw new TypeError('Failed to fetch');
       if (url.includes('/feeds/videos.xml')) {
         fetched.push('feed');
+        if (opts.feedStatus) return new Response('', { status: opts.feedStatus });
         return new Response(feedXml(...(opts.feed ?? [])), { status: 200 });
       }
       const { videoId } = JSON.parse(String(init?.body));
@@ -213,6 +216,25 @@ describe('background checker', () => {
     await until(() => sent.some((m) => m.type === 'checkPermit'));
     await new Promise((r) => setTimeout(r, 1500));
     expect(sent.map((m) => m.type)).toEqual(['checkPermit']); // before the fix: checkFailed, sent before pagehide
+  });
+
+  it("doesn't pause everyone when a channel feed is down, only skips that confirmation", async () => {
+    for (const feedStatus of [404, 500, 503]) {
+      const { checker, fetched, sent } = setup({ labels: { ZneqyXsgpO4: true }, feedStatus });
+      checker.offer('ZneqyXsgpO4', CID);
+      await until(() => fetched.includes('feed'));
+      await new Promise((r) => setTimeout(r, 50));
+      expect(sent.filter((m) => m.type === 'checkFailed')).toEqual([]); // before the fix: a 15-minute pause for 5xx
+    }
+  });
+
+  it('still pauses everyone when the feed says YouTube is pushing back', async () => {
+    for (const feedStatus of [429, 403]) {
+      const { checker, sent } = setup({ labels: { ZneqyXsgpO4: true }, feedStatus });
+      checker.offer('ZneqyXsgpO4', CID);
+      await until(() => sent.some((m) => m.type === 'checkFailed'));
+      expect(sent.find((m) => m.type === 'checkFailed')).toEqual({ type: 'checkFailed', status: feedStatus });
+    }
   });
 
   it('handles the newest offer first and never re-checks a video in the same tab', async () => {
