@@ -67,7 +67,11 @@ communications, location or user activity data). Then tick all three certificati
 transferred to third parties, isn't used for purposes unrelated to the single purpose, and isn't used for
 creditworthiness or lending.
 
-**Privacy policy URL:** `https://github.com/j3ffx/botless/blob/main/PRIVACY.md`
+**Privacy policy URL:** `https://j3ffx.github.io/botless/privacy.html` (generated from `PRIVACY.md` on every
+change; the GitHub file URL works too).
+
+**Official URL:** `https://j3ffx.github.io/botless/`, verified in Google Search Console with the publisher
+account (the ownership file is `site/google*.html`).
 
 ## Keep in sync
 
