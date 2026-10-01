@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Botless for YouTube</title>
 <meta name="description" content="A free, open-source Chrome extension that labels YouTube channels as Probably AI, Probably Human or Inconclusive, from YouTube's own AI disclosure.">
-<!-- Nothing loads from anywhere else: no fonts, no analytics. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'self'; base-uri 'none'; form-action 'none'">
+<!-- Nothing loads from anywhere else: no fonts, no analytics. The video player loads only when clicked. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'self'; script-src 'self'; frame-src https://www.youtube-nocookie.com; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <!-- Google Search Console ownership (with site/google*.html): keeps the site verified as the store's Official URL. -->
 <meta name="google-site-verification" content="lZkbFSLa86q1sEPju_YxintosyksBwFhQK-VfhCJrGI">
@@ -30,6 +30,15 @@
       <a class="button" href="https://github.com/j3ffx/botless#install">Install</a>
       <span class="soon">Coming soon to the Chrome Web Store</span>
     </p>
+  </section>
+
+  <section class="video">
+    <button class="player" id="play" type="button" aria-label="Play the 44-second demo (loads YouTube)">
+      <span class="play" aria-hidden="true"></span>
+      <span class="label">Watch the 44-second demo</span>
+      <span class="note">Plays from YouTube, which only loads when you click.</span>
+    </button>
+    <noscript><p><a href="https://www.youtube.com/watch?v=OSSHAtk5siA">Watch the demo on YouTube</a></p></noscript>
   </section>
 
   <section class="how">
@@ -68,5 +77,6 @@
   <p class="fine">Botless is an independent project, not affiliated with, endorsed by or sponsored by YouTube or
     Google. YouTube is a trademark of Google LLC.</p>
 </footer>
+<script src="site.js"></script>
 </body>
 </html>
