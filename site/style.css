@@ -73,3 +73,17 @@ footer .fine { font-size: 13px; }
   .play { width: 64px; height: 64px; }
   .play::after { left: 26px; top: 19px; border-width: 13px 0 13px 21px; }
 }
+
+/* privacy.html: PRIVACY.md as rendered by GitHub's Markdown API */
+.doc { max-width: 780px; padding-top: 16px; padding-bottom: 24px; }
+.doc h1 { font-size: clamp(30px, 5vw, 42px); margin: 16px 0 8px; }
+.doc h2 { font-size: 24px; margin: 36px 0 10px; }
+.doc .markdown-heading { position: relative; }
+.doc .anchor { display: none; } /* GitHub's hover link icons */
+.doc ul { padding-left: 22px; }
+.doc li { margin-bottom: 6px; }
+.doc code { font: 0.9em ui-monospace, Consolas, monospace; background: var(--surface); padding: 1px 5px; border-radius: 5px; }
+.doc table { display: block; overflow-x: auto; border-collapse: collapse; margin: 16px 0; font-size: 15px; }
+.doc th, .doc td { border: 1px solid var(--line); padding: 8px 12px; text-align: left; vertical-align: top; }
+.doc th { background: var(--surface); }
+.doc .source { margin-top: 40px; font-size: 14px; color: var(--muted); }

@@ -3,3 +3,6 @@ dist/
 *.zip
 dist-test/
 .claude/
+
+# GitHub Pages build output (scripts/build-site.mjs)
+_site/
