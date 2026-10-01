@@ -74,16 +74,45 @@ footer .fine { font-size: 13px; }
   .play::after { left: 26px; top: 19px; border-width: 13px 0 13px 21px; }
 }
 
-/* privacy.html: PRIVACY.md as rendered by GitHub's Markdown API */
-.doc { max-width: 780px; padding-top: 16px; padding-bottom: 24px; }
-.doc h1 { font-size: clamp(30px, 5vw, 42px); margin: 16px 0 8px; }
-.doc h2 { font-size: 24px; margin: 36px 0 10px; }
-.doc .markdown-heading { position: relative; }
+/* privacy.html: PRIVACY.md as rendered by GitHub's Markdown API (classes and data-labels added by
+   scripts/build-site.mjs) */
+.doc { max-width: 760px; padding-top: 8px; padding-bottom: 32px; font-size: 17px; line-height: 1.7; }
 .doc .anchor { display: none; } /* GitHub's hover link icons */
-.doc ul { padding-left: 22px; }
-.doc li { margin-bottom: 6px; }
-.doc code { font: 0.9em ui-monospace, Consolas, monospace; background: var(--surface); padding: 1px 5px; border-radius: 5px; }
-.doc table { display: block; overflow-x: auto; border-collapse: collapse; margin: 16px 0; font-size: 15px; }
-.doc th, .doc td { border: 1px solid var(--line); padding: 8px 12px; text-align: left; vertical-align: top; }
-.doc th { background: var(--surface); }
-.doc .source { margin-top: 40px; font-size: 14px; color: var(--muted); }
+.doc h1 { font-size: clamp(32px, 5vw, 44px); margin: 24px 0 4px; letter-spacing: -0.5px; }
+.doc .markdown-heading:first-child + p { color: var(--muted); font-size: 15px; margin-top: 0; }
+.doc h2 { font-size: 23px; margin: 0; }
+.doc .markdown-heading:has(h2) { margin: 44px 0 12px; padding-top: 28px; border-top: 1px solid var(--line); }
+.doc p { margin: 0 0 14px; }
+.doc ul { padding-left: 22px; margin: 0 0 16px; }
+.doc li { margin-bottom: 8px; }
+.doc li::marker { color: var(--red); }
+.doc code { font: 0.86em ui-monospace, Consolas, monospace; background: var(--surface); padding: 2px 6px;
+  border-radius: 6px; white-space: nowrap; }
+.doc ul.summary { list-style: none; padding: 18px 22px; background: var(--surface); border-radius: 14px; }
+.doc ul.summary li { position: relative; padding-left: 22px; }
+.doc ul.summary li::before { content: ""; position: absolute; left: 2px; top: 11px; width: 8px; height: 8px;
+  border-radius: 50%; background: var(--red); }
+.doc ul.summary li:last-child { margin-bottom: 0; }
+
+/* The data table: a clean list on wide screens, one card per row on phones. */
+.doc markdown-accessiblity-table { display: block; margin: 18px 0 22px; }
+.doc table { width: 100%; border-collapse: collapse; font-size: 15.5px; line-height: 1.55; }
+.doc th { text-align: left; font-size: 12.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--muted); padding: 0 14px 10px 0; border-bottom: 2px solid var(--line); }
+.doc td { padding: 14px 14px 14px 0; vertical-align: top; border-bottom: 1px solid var(--line); }
+.doc td:first-child { font-weight: 600; width: 40%; }
+.doc td:nth-child(2) { width: 30%; color: var(--muted); }
+@media (max-width: 640px) {
+  .doc { font-size: 16px; }
+  .doc thead { display: none; }
+  .doc table, .doc tbody, .doc tr, .doc td { display: block; width: auto; }
+  .doc tr { background: var(--surface); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; }
+  .doc td, .doc td:first-child, .doc td:nth-child(2) { border: 0; padding: 0; width: auto; }
+  .doc td:first-child { font-size: 16px; margin-bottom: 8px; }
+  .doc td:not(:first-child) { color: var(--text); margin-top: 4px; }
+  .doc td:not(:first-child)::before { content: attr(data-label); display: block; font-size: 11.5px;
+    font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .doc code { white-space: normal; }
+}
+.doc .source { margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 14px;
+  color: var(--muted); }
