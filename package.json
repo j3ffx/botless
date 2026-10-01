@@ -25,6 +25,7 @@
     "check:commits": "node scripts/check-commits.mjs",
     "verify": "npm run typecheck && npm test && npm run build && npm run check:dist",
     "smoke": "node scripts/smoke.mjs",
+    "live-test": "node scripts/live-test.mjs",
     "package": "node scripts/package.mjs",
     "release-notes": "node scripts/release-notes.mjs",
     "preversion": "npm run verify",
