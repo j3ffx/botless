@@ -1,0 +1,20 @@
+<!doctype html><meta charset="utf-8"><title>popup</title>
+<style>
+html,body{margin:0;width:1280px;height:800px;background:#0f0f0f;color:#f1f1f1;font-family:"Segoe UI",system-ui,sans-serif;overflow:hidden}
+.wrap{display:flex;align-items:center;height:100%;padding:0 90px;box-sizing:border-box;gap:70px}
+.copy{flex:1}
+h1{font-size:54px;line-height:1.1;font-weight:600;margin:0 0 22px;letter-spacing:-0.5px}
+p{font-size:24px;line-height:1.45;color:#aaa;margin:0 0 14px}
+.dot{display:inline-block;width:14px;height:14px;border-radius:50%;background:#e52d2d;margin-right:10px;vertical-align:1px}
+.frame{width:368px;height:452px;transform:scale(1.42);transform-origin:center;border-radius:14px;overflow:hidden;box-shadow:0 0 0 1px #2e2e33;margin-right:110px}
+iframe{border:0;width:368px;height:452px;display:block}
+</style>
+<div class="wrap">
+  <div class="copy">
+    <h1>See why a channel<br>is flagged</h1>
+    <p><span class="dot"></span>Every verdict comes with its reasons.</p>
+    <p><span class="dot"></span>Mark any channel yourself: your mark always wins.</p>
+    <p><span class="dot"></span>Two switches. Everything else is in Settings.</p>
+  </div>
+  <div class="frame"><iframe src="/dist-test/popup.html"></iframe></div>
+</div>

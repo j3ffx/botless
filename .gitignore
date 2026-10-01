@@ -6,3 +6,8 @@ dist-test/
 
 # GitHub Pages build output (scripts/build-site.mjs)
 _site/
+
+# Store tools (store/README.md): real YouTube captures, generated output, the capture browser profile
+store/captures/
+store/out/
+store/.profile/

@@ -1,0 +1,157 @@
+<!doctype html><meta charset="utf-8"><title>Botless video</title>
+<style>html,body{margin:0;background:#000}canvas{display:block}</style>
+<canvas id="c" width="1280" height="720"></canvas>
+<script src="soundtrack.js"></script>
+<script>
+const W = 1280, H = 720, RED = '#e52d2d', BG = '#0f0f0f', FONT = '"Segoe UI", system-ui, sans-serif';
+const c = document.getElementById('c'), g = c.getContext('2d');
+const load = (src) => new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = src; });
+
+const ease = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : 1 - Math.pow(1 - x, 3));
+const easeIO = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const clamp01 = (x) => Math.max(0, Math.min(1, x));
+const ramp = (t, a, b) => clamp01((t - a) / (b - a));
+
+function text(str, x, y, { size = 40, weight = 600, color = '#f1f1f1', align = 'left', alpha = 1 } = {}) {
+  g.save(); g.globalAlpha *= alpha; g.fillStyle = color; g.textAlign = align; g.textBaseline = 'alphabetic';
+  g.font = `${weight} ${size}px ${FONT}`; g.fillText(str, x, y); g.restore();
+}
+function rrect(x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
+/** Draws a 1280×800 screenshot into the frame: source crop (sx, sy, sw, sh), zoomed around (fx, fy) by z. */
+function shot(img, { sy = 40, sh = 720, z = 1, fx = 640, fy = 360 } = {}) {
+  const sw = sh * (W / H);
+  const cw = sw / z, ch = sh / z;
+  const cx = Math.min(Math.max(fx - cw / 2, 0), 1280 - cw);
+  const cy = Math.min(Math.max(sy + (fy - sy) - ch / 2, sy), sy + sh - ch);
+  g.drawImage(img, cx, cy, cw, ch, 0, 0, W, H);
+}
+/** Caption band at the bottom. */
+function caption(title, sub, alpha) {
+  if (alpha <= 0) return;
+  g.save(); g.globalAlpha = alpha;
+  const grd = g.createLinearGradient(0, H - 190, 0, H);
+  grd.addColorStop(0, 'rgba(15,15,15,0)'); grd.addColorStop(0.35, 'rgba(15,15,15,0.92)'); grd.addColorStop(1, 'rgba(15,15,15,0.97)');
+  g.fillStyle = grd; g.fillRect(0, H - 190, W, 190);
+  const dy = (1 - ease(alpha)) * 14;
+  g.fillStyle = RED; g.beginPath(); g.arc(88, H - (sub ? 88 : 62) + dy - 11, 9, 0, 7); g.fill();
+  text(title, 112, H - (sub ? 88 : 62) + dy, { size: 40 });
+  if (sub) text(sub, 112, H - 46 + dy, { size: 25, weight: 400, color: '#b5b5b5' });
+  g.restore();
+}
+function icon(img, x, y, size, alpha = 1) { g.save(); g.globalAlpha *= alpha; g.drawImage(img, 16, 16, 96, 96, x, y, size, size); g.restore(); }
+
+let I = {};
+const scenes = [
+  // 1. Title
+  { d: 3.6, draw(t) {
+    g.fillStyle = BG; g.fillRect(0, 0, W, H);
+    const s = ease(ramp(t, 0.1, 0.9)), a = ramp(t, 0.1, 0.6);
+    const size = 150 * (0.7 + 0.3 * s);
+    icon(I.icon, W / 2 - size / 2, 205 + (150 - size) / 2, size, a);
+    text('Botless', W / 2, 455, { size: 84, align: 'center', alpha: ramp(t, 0.6, 1.3) });
+    text('for YouTube', W / 2, 510, { size: 34, weight: 400, color: '#b5b5b5', align: 'center', alpha: ramp(t, 1.0, 1.7) });
+  } },
+  // 2. The problem
+  { d: 4.4, draw(t) {
+    shot(I.off, { sy: 8, z: 1 + 0.04 * t / 4.4 });
+    caption('AI videos are everywhere.', 'And most of them don’t tell you.', ramp(t, 0.4, 1.0));
+  } },
+  // 3. Badges appear, then zoom on one
+  { d: 6.2, draw(t) {
+    const z = 1 + 0.9 * easeIO(ramp(t, 2.2, 4.4));
+    shot(I.off, { sy: 8, z, fx: 250, fy: 250 });
+    g.save(); g.globalAlpha = ease(ramp(t, 0.5, 1.1)); shot(I.badge, { sy: 8, z, fx: 250, fy: 250 }); g.restore();
+    caption('Botless flags them: Probably AI.', 'Based on YouTube’s own AI label.', ramp(t, 1.0, 1.6));
+  } },
+  // 4. Fade, then hide
+  { d: 6.4, draw(t) {
+    shot(I.badge, { sy: 8 });
+    g.save(); g.globalAlpha = ease(ramp(t, 0.2, 0.9)); shot(I.fade, { sy: 8 }); g.restore();
+    g.save(); g.globalAlpha = ease(ramp(t, 3.3, 4.0)); shot(I.hide, { sy: 120, sh: 680 }); g.restore();
+    caption('Fade them…', null, ramp(t, 0.4, 0.9) * (1 - ramp(t, 3.0, 3.3)));
+    caption('…or hide them completely.', null, ramp(t, 3.5, 4.0));
+  } },
+  // 5. Watch page pill
+  { d: 5.6, draw(t) {
+    const z = 1 + 0.8 * easeIO(ramp(t, 0.8, 3.2));
+    shot(I.watch, { sy: 80, sh: 720, z, fx: 300, fy: 640 });
+    caption('Know before you watch.', 'The verdict sits next to the channel name.', ramp(t, 0.4, 1.0));
+  } },
+  // 6. Popup
+  { d: 5.4, draw(t) {
+    shot(I.popup, { sy: 40, z: 1 + 0.05 * t / 5.4 });
+  } },
+  // 7. Privacy
+  { d: 6.2, draw(t) {
+    g.fillStyle = BG; g.fillRect(0, 0, W, H);
+    text('Private by design', 150, 190, { size: 56, alpha: ramp(t, 0.1, 0.6) });
+    const lines = [
+      ['Runs on your device.', 'Everything it learns stays in your browser.'],
+      ['No servers, no accounts, no tracking.', 'Open source, so anyone can check.'],
+      ['Active mode is off by default.', 'Turn it on to check videos before you watch, without your cookies.'],
+    ];
+    lines.forEach(([a, b], i) => {
+      const k = ease(ramp(t, 0.8 + i * 0.9, 1.4 + i * 0.9)), y = 300 + i * 120 + (1 - k) * 16;
+      g.save(); g.globalAlpha = k; g.fillStyle = RED; g.beginPath(); g.arc(162, y - 12, 9, 0, 7); g.fill(); g.restore();
+      text(a, 190, y, { size: 36, alpha: k });
+      text(b, 190, y + 40, { size: 24, weight: 400, color: '#b5b5b5', alpha: k });
+    });
+  } },
+  // 8. End card
+  { d: 5.0, draw(t) {
+    g.fillStyle = BG; g.fillRect(0, 0, W, H);
+    const a = ramp(t, 0.1, 0.7);
+    icon(I.icon, W / 2 - 60, 170, 120, a);
+    text('Botless for YouTube', W / 2, 380, { size: 64, align: 'center', alpha: a });
+    text('Free and open source', W / 2, 440, { size: 30, weight: 400, color: '#b5b5b5', align: 'center', alpha: ramp(t, 0.5, 1.1) });
+    text('github.com/j3ffx/botless', W / 2, 520, { size: 28, weight: 400, color: '#7aa7ff', align: 'center', alpha: ramp(t, 0.9, 1.5) });
+  } },
+];
+let acc = 0; for (const s of scenes) { s.start = acc; acc += s.d; }
+const TOTAL = acc, XF = 0.5;
+
+function frame(t) {
+  g.globalAlpha = 1; g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
+  for (let i = 0; i < scenes.length; i++) {
+    const s = scenes[i], local = t - s.start;
+    if (local < -XF || local > s.d) continue;
+    g.save();
+    g.globalAlpha = i === 0 ? 1 : ease(clamp01((local + XF) / XF)); // crossfade in over the previous scene's last XF s
+    s.draw(Math.max(0, local));
+    g.restore();
+  }
+  // Fade out at the very end.
+  const out = ramp(t, TOTAL - 0.6, TOTAL);
+  if (out > 0) { g.fillStyle = `rgba(0,0,0,${out})`; g.fillRect(0, 0, W, H); }
+}
+window.renderAt = (t) => frame(t);
+
+window.record = async () => {
+  // Picture and sound share one clock: the AudioContext's.
+  const ac = new AudioContext({ sampleRate: 48000 });
+  await ac.resume();
+  const dest = ac.createMediaStreamDestination();
+  const t0 = ac.currentTime + 0.25;
+  window.buildSoundtrack(ac, dest, t0, { starts: scenes.map((x) => x.start), total: TOTAL });
+  const stream = new MediaStream([...c.captureStream(30).getVideoTracks(), ...dest.stream.getAudioTracks()]);
+  const rec = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9,opus', videoBitsPerSecond: 8_000_000, audioBitsPerSecond: 192_000 });
+  const done = new Promise((ok) => (rec.onstop = ok));
+  rec.ondataavailable = async (e) => { if (e.data.size) await window.saveChunk(await blobToB64(e.data)); };
+  rec.start(1000);
+  await new Promise((ok) => {
+    const tick = () => { const t = Math.max(0, ac.currentTime - t0); frame(Math.min(t, TOTAL)); if (t < TOTAL + 0.3) requestAnimationFrame(tick); else ok(); };
+    requestAnimationFrame(tick);
+  });
+  rec.stop(); await done; await new Promise((r) => setTimeout(r, 1500));
+  return TOTAL;
+};
+const blobToB64 = (b) => new Promise((ok) => { const r = new FileReader(); r.onload = () => ok(r.result.slice(r.result.indexOf(';base64,') + 8)); r.readAsDataURL(b); });
+
+window.ready = (async () => {
+  const [icon, off, badge, fade, hide, watch, popup] = await Promise.all(
+    ['/src/static/icons/icon-128.png', '/store/captures/search-off.png', '/store/captures/search-badge.png', '/store/captures/search-fade.png', '/store/captures/search-hide.png', '/store/captures/watch.png', '/store/out/screenshot-4-popup.png'].map(load));
+  I = { icon, off, badge, fade, hide, watch, popup };
+  frame(0);
+  return TOTAL;
+})();
+</script>
