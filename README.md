@@ -11,6 +11,9 @@ Phase 1 runs **on your device**. It has no analytics and no servers. The popup h
 default. While it's off, Botless is fully local and makes no requests of its own; it learns only from
 what you watch.
 
+Website: [j3ffx.github.io/botless](https://j3ffx.github.io/botless/) (source in `site/`, published by
+`.github/workflows/pages.yml`).
+
 ## Install
 
 Botless isn't on the Chrome Web Store yet. Until then:

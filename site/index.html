@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Botless for YouTube</title>
+<meta name="description" content="A free, open-source Chrome extension that labels YouTube channels as Probably AI, Probably Human or Inconclusive, from YouTube's own AI disclosure.">
+<!-- Nothing loads from anywhere else: no fonts, no analytics. The video player loads only when clicked. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'self'; script-src 'self'; frame-src https://www.youtube-nocookie.com; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="img/icon-32.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="bar">
+  <a class="brand" href="./"><img src="img/icon-32.png" alt="" width="28" height="28">Botless</a>
+  <nav><a href="#privacy">Privacy</a><a href="https://github.com/j3ffx/botless">GitHub</a></nav>
+</header>
+
+<main>
+  <section class="hero">
+    <img class="logo" src="img/icon-128.png" alt="" width="128" height="128">
+    <h1>Know which YouTube channels are <em>probably AI</em>.</h1>
+    <p class="lead">Botless is a free, open-source Chrome extension. It labels each channel <b>Probably AI</b>,
+      <b>Probably Human</b> or <b>Inconclusive</b>, based on YouTube's own AI disclosure, then badges, fades,
+      hides or skips its videos. Your call.</p>
+    <p class="cta">
+      <a class="button" href="https://github.com/j3ffx/botless#install">Install</a>
+      <span class="soon">Coming soon to the Chrome Web Store</span>
+    </p>
+  </section>
+
+  <section class="video">
+    <button class="player" id="play" type="button" aria-label="Play the 44-second demo (loads YouTube)">
+      <span class="play" aria-hidden="true"></span>
+      <span class="label">Watch the 44-second demo</span>
+      <span class="note">Plays from YouTube, which only loads when you click.</span>
+    </button>
+    <noscript><p><a href="https://www.youtube.com/watch?v=UNC0eP6kMX0">Watch the demo on YouTube</a></p></noscript>
+  </section>
+
+  <section class="how">
+    <h2>How it works</h2>
+    <ol>
+      <li><b>YouTube's own label.</b> Creators must disclose realistic AI-generated content, and YouTube shows
+        it on the video as "Made with AI". Botless reads that label on the videos you watch.</li>
+      <li><b>Per channel.</b> A channel whose videos are consistently labeled becomes <i>Probably AI</i>. One
+        labeled video alone never does, and a labeled video is flagged on its own.</li>
+      <li><b>Your choice.</b> Badge, fade or completely hide each verdict's videos, in your feed, search, the
+        sidebar and Shorts. Optional auto-skip, with Undo. Mark any channel yourself: your mark always wins.</li>
+    </ol>
+  </section>
+
+  <section class="shot">
+    <img src="img/popup.png" alt="The Botless popup: a channel marked Probably AI, with the reason (3 of 3 watched videos carry YouTube's AI label) and buttons to mark it yourself." width="1280" height="800" loading="lazy">
+  </section>
+
+  <section class="privacy" id="privacy">
+    <h2>Private by design</h2>
+    <ul>
+      <li><b>Runs on your device.</b> Everything Botless learns stays in your browser.</li>
+      <li><b>No servers, no accounts, no analytics.</b> The developer never receives any of your data.</li>
+      <li><b>Active mode is off by default.</b> Turn it on to check the videos on your screen before you watch
+        them. Those requests go to YouTube only, without your cookies.</li>
+      <li><b>Never acts on your YouTube account.</b> No likes, subscriptions or "Not interested".</li>
+    </ul>
+    <p><a href="https://github.com/j3ffx/botless/blob/main/PRIVACY.md">Read the privacy policy</a></p>
+  </section>
+</main>
+
+<footer>
+  <p>Free software under the <a href="https://github.com/j3ffx/botless/blob/main/LICENSE">GPL-3.0</a> ·
+    <a href="https://github.com/j3ffx/botless">Source code</a> ·
+    <a href="https://github.com/j3ffx/botless/issues">Support</a></p>
+  <p class="fine">Botless is an independent project, not affiliated with, endorsed by or sponsored by YouTube or
+    Google. YouTube is a trademark of Google LLC.</p>
+</footer>
+<script src="site.js"></script>
+</body>
+</html>
