@@ -1,6 +1,6 @@
 {
   "name": "botless-youtube",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": true,
   "description": "Botless for YouTube — judges each channel as Probably Human / Probably AI / Inconclusive.",
   "license": "GPL-3.0-only",
