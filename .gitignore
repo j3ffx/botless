@@ -3,6 +3,8 @@ dist/
 *.zip
 dist-test/
 .claude/
+# Chrome for Testing, if `npx @puppeteer/browsers install` is run from the repository (CLAUDE.md → smoke test)
+chrome/
 
 # GitHub Pages build output (scripts/build-site.mjs)
 _site/
