@@ -26,9 +26,11 @@ let body = (await res.text()).replace(
 );
 
 // On phones, style.css shows each table row as a card: every cell gets its column heading as a label.
-const text = (html) => html.replace(/<[^>]+>/g, '').trim();
+// A label is a heading's text, escaped for the attribute: once tags are stripped, nothing left can open one.
+const ESC = { '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+const text = (html) => html.replace(/<[^>]+>/g, '').replace(/[<>"]/g, (c) => ESC[c]).trim();
 body = body.replace(/<table[\s\S]*?<\/table>/g, (table) => {
-  const labels = [...table.matchAll(/<th[^>]*>([\s\S]*?)<\/th>/g)].map((m) => text(m[1]).replace(/"/g, '&quot;'));
+  const labels = [...table.matchAll(/<th[^>]*>([\s\S]*?)<\/th>/g)].map((m) => text(m[1]));
   return table.replace(/<tr>([\s\S]*?)<\/tr>/g, (row, cells) => {
     let i = 0;
     return `<tr>${cells.replace(/<td(?=[\s>])/g, () => `<td data-label="${labels[i++] ?? ''}"`)}</tr>`;
