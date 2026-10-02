@@ -63,7 +63,7 @@ const set = async (patch) => {
   const { settings } = await storage('settings');
   await ext.evaluate((s) => chrome.storage.local.set({ settings: s }), { ...settings, ...patch, actions: { ...settings.actions, ...(patch.actions ?? {}) } });
 };
-const page = (await browser.pages()).find((p) => p.url().includes('youtube.com')) ?? (await browser.newPage());
+const page = (await browser.pages()).find((p) => URL.parse(p.url())?.hostname === 'www.youtube.com') ?? (await browser.newPage());
 await page.bringToFront();
 await page.setViewport({ width: 1280, height: 800 });
 await page.setCookie({ name: 'PREF', value: 'gl=US&hl=en', domain: '.youtube.com', path: '/', secure: true });

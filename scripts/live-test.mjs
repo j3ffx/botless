@@ -122,7 +122,7 @@ try {
       const btn = await page.$('button[aria-label^="Reject"], form[action*="reject"] button');
       if (btn) await Promise.all([page.waitForNavigation({ timeout: 30_000 }).catch(() => {}), btn.click()]);
       console.log('  (consent page: rejected non-essential cookies)');
-      if (!page.url().includes('youtube.com/')) await page.goto(url, { waitUntil: 'domcontentloaded' });
+      if (URL.parse(page.url())?.hostname !== 'www.youtube.com') await page.goto(url, { waitUntil: 'domcontentloaded' });
     }
     if (await page.$('iframe[src*="recaptcha"], #captcha-form')) {
       throw new Error('YouTube is showing its robot check to this connection (VPN? too many runs?). Try again later.');
