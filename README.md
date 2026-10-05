@@ -276,6 +276,12 @@ Dev-only helpers (not shipped):
 - YouTube markup changes. All selectors are listed in `docs/YOUTUBE-DOM.md` and kept in a few constants
   (`TILE_SELECTOR`, `THUMB`, `ITEM_ROOT`, `OWNER_TARGET`).
 
+## Feedback
+
+Feature requests and bug reports are welcome in [Issues](https://github.com/j3ffx/botless/issues), and I
+actively answer them. Ideas that fit the project get built: private, local-first, and never acting on your
+YouTube account. [`docs/ROADMAP.md`](docs/ROADMAP.md) lists what was already decided, and why.
+
 ## Phase 2 hooks
 
 Phase 2 isn't specified yet. It's expected to add community votes, and it will be designed and documented

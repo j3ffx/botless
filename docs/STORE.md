@@ -26,6 +26,9 @@ Ready-to-paste answers for the developer dashboard. They must stay consistent wi
   > Private by design: no servers, no accounts, no analytics. Everything stays on your device, and with Active
   > mode off Botless sends nothing anywhere. It never acts on your YouTube account.
   >
+  > Ideas or bugs? I actively answer feature requests and bug reports, and build the ideas that fit the
+  > project: https://github.com/j3ffx/botless/issues
+  >
   > Open source (GPL-3.0): https://github.com/j3ffx/botless
   >
   > Botless is an independent project, not affiliated with, endorsed by or sponsored by YouTube or Google.
