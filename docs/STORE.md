@@ -90,7 +90,10 @@ review.
 
 One-time setup, signed in with the publisher account (it needs 2-step verification):
 
-1. Open [Cloud Shell](https://shell.cloud.google.com/) and paste:
+1. Accept Google's [Cloud terms](https://console.developers.google.com/terms/universal) and the
+   [Chrome Web Store API terms](https://console.developers.google.com/terms/chromewebstore): until both are
+   accepted, enabling the API fails (`UREQ_TOS_NOT_ACCEPTED`). Then open
+   [Cloud Shell](https://shell.cloud.google.com/) and paste:
 
    ```bash
    PROJECT=botless-store-$(openssl rand -hex 3)
