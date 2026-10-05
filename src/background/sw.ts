@@ -218,7 +218,11 @@ async function maintenance(): Promise<void> {
 const OBSOLETE_KEYS = ['dontrec']; // the removed "Don't recommend channel" feature (2026-09-29)
 
 chrome.runtime.onInstalled.addListener(async ({ reason }) => {
-  if (reason === 'install') await local.set({ [KEY.settings]: DEFAULT_SETTINGS });
+  if (reason === 'install') {
+    await local.set({ [KEY.settings]: DEFAULT_SETTINGS });
+    // Without it, a new user sees nothing happen until channels have a few watched videos, and may give up.
+    await chrome.tabs.create({ url: 'welcome.html' }).catch(() => undefined);
+  }
   if (reason === 'update') await local.remove(OBSOLETE_KEYS);
   await purge();
 });

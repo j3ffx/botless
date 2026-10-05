@@ -1,0 +1,20 @@
+main { max-width: 640px; margin: 0 auto; padding: 40px 16px 64px; }
+
+.head { display: flex; gap: 18px; align-items: center; }
+.head h1 { margin: 0; font-size: 26px; letter-spacing: -0.3px; }
+.head p { margin: 4px 0 0; }
+
+section { margin-top: 32px; }
+h2 { font-size: 17px; margin: 0 0 8px; }
+p { margin: 0 0 10px; }
+
+.verdicts { list-style: none; padding: 0; margin: 14px 0; display: grid; gap: 10px; }
+.verdicts li { display: flex; gap: 10px; align-items: baseline; }
+.verdicts .pill { flex: none; min-width: 128px; }
+
+a.btn { display: inline-block; text-decoration: none; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+@media (max-width: 520px) {
+  .verdicts li { flex-direction: column; gap: 4px; }
+}

@@ -23,6 +23,7 @@ const referenced = new Set([
   manifest.background?.service_worker,
   manifest.action?.default_popup,
   manifest.options_ui?.page,
+  'welcome.html', // opened by the service worker on install, not referenced by the manifest
   ...Object.values(manifest.action?.default_icon ?? {}),
   ...Object.values(manifest.icons ?? {}),
   ...(manifest.content_scripts ?? []).flatMap((cs) => [...(cs.js ?? []), ...(cs.css ?? [])]),

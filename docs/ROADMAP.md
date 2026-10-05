@@ -21,6 +21,7 @@ rejected on purpose.
 | 2026-09-29 | CI tooling is **zero-dependency Node scripts** (zip, commit lint, notes). The only new dev dependencies are `puppeteer-core` (smoke test) and `oxc-parser` (invariant tests). | Fewer packages to audit for a privacy-focused extension. |
 | 2026-09-29 | **TypeScript 7** (native compiler) for type checking. `tests/invariants.test.ts` parses with `oxc-parser`, not TypeScript's API. | TS 7 is ~7x faster here and only ships an `unstable/` API. oxc outputs standard ESTree, so the tests don't depend on TypeScript internals. |
 | 2026-09-29 | The smoke test runs in **Chrome for Testing**, fully offline: requests from the YouTube tab, the popup and Settings are intercepted, and it fails on any request while Active mode is off or on any page loading something from outside the extension. The service worker has no network code at all, which the static checks enforce (tests/invariants.test.ts, scripts/check-dist.mjs). | Branded Chrome ignores `--load-extension` since v137. Offline keeps CI deterministic and never touches real YouTube. |
+| 2026-10-05 | A **welcome page** opens once, on first install. Static HTML, no script. | Verdicts need a few watched videos, so a new user saw nothing happen and could think Botless was broken. Google also ranks listings partly on onboarding. |
 
 ## Open items
 

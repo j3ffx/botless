@@ -33,33 +33,35 @@ Search `We R Cinephiles` for a "Latest Shorts from X" shelf. Their Shorts tab is
 
 ## Steps
 
-1. **First look.** The popup shows "0 likely-AI videos flagged today" and "Open a YouTube video…".
-2. **Official label.** Open `watch?v=ZneqyXsgpO4`. The description has "How this was made → Made with AI".
+1. **Welcome page.** On a first install (not on reload or update), a "Botless is ready" tab opens. Its
+   **Open Settings** button opens Settings. Remove and re-add the extension to see it again.
+2. **First look.** The popup shows "0 likely-AI videos flagged today" and "Open a YouTube video…".
+3. **Official label.** Open `watch?v=ZneqyXsgpO4`. The description has "How this was made → Made with AI".
    Expect a **Probably AI** pill next to the channel name: this video carries the label. The popup shows the
    *channel's* verdict, **Inconclusive**, with the reason "1 of 1 video… need 2+ videos". The channel turns
    **Probably AI** (and its other videos' tiles get red badges) after a second labeled video, or right away if
    Settings → minimum videos is set to 1.
-3. **Auto-dubbed.** `watch?v=LKQMw1WGL78` must get no AI verdict.
-4. **Manual mark.** Popup → Mark as AI on a known channel. Its tiles get red badges in search, on home and
+4. **Auto-dubbed.** `watch?v=LKQMw1WGL78` must get no AI verdict.
+5. **Manual mark.** Popup → Mark as AI on a known channel. Its tiles get red badges in search, on home and
    in the sidebar, without a reload. Mark as human and Clear also update live.
-5. **Actions.** Settings → Probably AI → Fade, then Hide completely. Hidden tiles collapse, with no gaps
+6. **Actions.** Settings → Probably AI → Fade, then Hide completely. Hidden tiles collapse, with no gaps
    in the grid.
-6. **Auto-skip and Undo.** Turn auto-skip on and open a video from a channel marked AI. The video pauses, a
+7. **Auto-skip and Undo.** Turn auto-skip on and open a video from a channel marked AI. The video pauses, a
    toast counts down, then it moves on. Undo keeps the video, and it isn't re-skipped in that tab.
    *Next video*: use a throwaway playlist,
    `https://www.youtube.com/watch_videos?video_ids=ZneqyXsgpO4,JsBZOcqZerk,NIk_0AW5hFU`. It should skip to
    item 2. YouTube's own "next" shortcut is **Shift+N**. If there's no next video, it goes back.
-7. **Shorts.**
+8. **Shorts.**
    a. `/shorts/ZneqyXsgpO4` shows the pill in the channel bar.
    b. Swiping away removes it, and swiping back restores it.
    c. Auto-skip moves to the next Short (Undo works).
    d. In search, the "Latest Shorts from We R Cinephiles" shelf is badged, and so is `/@WeRCinephiles/shorts`.
-8. **Popup and Settings.** The counter increments once per video. The on/off switch removes and restores
+9. **Popup and Settings.** The counter increments once per video. The on/off switch removes and restores
    everything. Marked channels are listed with Remove. The human → "Subtle green badge" option works.
    Export → Clear observations → Import restores observations. Out-of-range numbers get clamped.
-9. **Themes.** YouTube light and dark (profile → Appearance): badge, pill and toast are all readable.
-10. **Performance.** Scroll home fast for about 30 s. No stutter, and no badge stays stuck on a recycled tile.
-11. **Privacy.** `chrome://extensions` → Botless → Details → *service worker* → Network tab. It stays
+10. **Themes.** YouTube light and dark (profile → Appearance): badge, pill and toast are all readable.
+11. **Performance.** Scroll home fast for about 30 s. No stutter, and no badge stays stuck on a recycled tile.
+12. **Privacy.** `chrome://extensions` → Botless → Details → *service worker* → Network tab. It stays
     empty (the SW never fetches). With **Active mode** off, the YouTube tab also shows no Botless requests.
 
 ### Active mode (background checks)
@@ -72,7 +74,7 @@ Search `We R Cinephiles` for a "Latest Shorts from X" shelf. Their Shorts tab is
 
 ## Automated part, on live YouTube
 
-`npm run live-test -- --release X.Y.Z` (or a folder, default `dist/`) runs steps 2, 3, part of 4, Active
+`npm run live-test -- --release X.Y.Z` (or a folder, default `dist/`) runs steps 1 (after 0.1.6), 3, 4, part of 5, Active
 mode and "Botless off" in Chrome for Testing, signed out, in about 3 minutes. It doesn't replace this plan:
 nothing signed in, no auto-skip, Shorts player, themes or scrolling feel.
 

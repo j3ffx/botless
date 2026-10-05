@@ -27,7 +27,8 @@ function copyStatic() {
   mkdirSync(out, { recursive: true });
   cpSync('src/static', out, { recursive: true });
   cpSync('LICENSE', `${out}/LICENSE`); // GPL-3.0: the distributed package carries its license
-  for (const f of ['src/popup/popup.html', 'src/popup/popup.css', 'src/options/options.html', 'src/options/options.css', 'src/content/content.css'])
+  for (const f of ['src/popup/popup.html', 'src/popup/popup.css', 'src/options/options.html', 'src/options/options.css', 'src/welcome/welcome.html', 'src/welcome/welcome.css',
+    'src/content/content.css'])
     cpSync(f, `${out}/${f.split('/').pop()}`);
 }
 

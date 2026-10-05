@@ -205,6 +205,7 @@ src/
   background/sw.ts        service worker: the single, serialized writer for channel data, marks and the video map
                           (settings are written by the popup and options pages) + global check rate limit
   popup/, options/        vanilla TS UI (no framework needed at this size)
+  welcome/                welcome page, opened once on install (static HTML, no script)
   shared/scoring.ts       ★ pure verdict model
   shared/verdict.ts       cache/TTL + observation bookkeeping (pure)
   shared/disclosure.ts    official-label detection (pure; JSON or DOM)

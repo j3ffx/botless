@@ -89,6 +89,16 @@ try {
     await sw.evaluate((s) => chrome.storage.local.set({ settings: s }), next);
   };
 
+  // Close the welcome tab opened on install: it takes the focus, and Botless badges in rAF, which stops in the
+  // background.
+  const welcome = await browser
+    .waitForTarget((t) => /^chrome-extension:\/\/[^/]+\/welcome\.html$/.test(t.url()), { timeout: 5_000 })
+    .catch(() => null);
+  if (/^\d+\.\d+\.\d+$/.test(version) && version.localeCompare('0.1.6', undefined, { numeric: true }) > 0) {
+    check(!!welcome, 'installing opens the welcome page');
+  }
+  await (await welcome?.page())?.close();
+
   const page = (await browser.pages())[0] ?? (await browser.newPage());
   const errors = [];
   page.on('pageerror', (e) => /chrome-extension:/.test(e.stack ?? '') && errors.push(e.message));

@@ -83,6 +83,22 @@ try {
   check(manifest.name === 'Botless for YouTube', `manifest loaded, version ${manifest.version}`);
   const storage = (keys) => sw.evaluate((k) => chrome.storage.local.get(k), keys);
 
+  // ---- Welcome page (opened once, on install) ----
+  // First: the tab it opens takes the focus, and pages left in the background stop rendering.
+  const opened = await browser
+    .waitForTarget((t) => t.url() === `chrome-extension://${extId}/welcome.html`, { timeout: 5_000 })
+    .catch(() => null);
+  check(!!opened, 'installing opens the welcome page');
+  const welcome = await browser.newPage();
+  const welcomeErrors = watchErrors(welcome, 'welcome');
+  const welcomeRequests = await watchRequests(welcome, extId);
+  await welcome.goto(`chrome-extension://${extId}/welcome.html`, { waitUntil: 'networkidle0' });
+  check(!!(await welcome.$('a[href="options.html"]')), 'the welcome page links to Settings');
+  check(welcomeRequests.length === 0, `the welcome page loads nothing from outside the extension${welcomeRequests.length ? `: ${welcomeRequests.join(', ')}` : ''}`);
+  check(welcomeErrors.length === 0, `the welcome page has no errors${welcomeErrors.length ? `: ${welcomeErrors.join(' | ')}` : ''}`);
+  await welcome.close();
+  await (await opened?.page())?.close();
+
   // ---- Popup ----
   const popup = await browser.newPage();
   const popupErrors = watchErrors(popup, 'popup');

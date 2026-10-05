@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Welcome to Botless</title>
+    <link rel="stylesheet" href="theme.css" />
+    <link rel="stylesheet" href="welcome.css" />
+  </head>
+  <body>
+    <!-- Opened once, when Botless is installed (src/background/sw.ts). No script: nothing here can send anything. -->
+    <main>
+      <header class="head">
+        <img src="icons/icon-128.png" width="64" height="64" alt="" />
+        <div>
+          <h1>Botless is ready</h1>
+          <p class="muted">You can close this tab and go back to YouTube. Here is what to expect.</p>
+        </div>
+      </header>
+
+      <section>
+        <h2>Verdicts build up as you browse</h2>
+        <p>
+          Botless reads YouTube’s own “Made with AI” label on the videos you watch, and keeps a record for each
+          channel. A channel needs a few videos before it gets a verdict, so <b>don’t expect many badges in the
+          first minutes</b>. They come as you watch.
+        </p>
+        <ul class="verdicts">
+          <li><span class="pill ai">Probably AI</span> Its videos you’ve seen are consistently labeled (2 or more,
+            by default). A single labeled video is flagged on its own.</li>
+          <li><span class="pill inconclusive">Inconclusive</span> Not enough to decide yet, or mixed signals.</li>
+          <li><span class="pill human">Probably Human</span> Several videos and no AI label at all. Hidden by
+            default: Botless only shows it if you ask for it in Settings.</li>
+        </ul>
+        <p class="muted">
+          Many creators never disclose AI use, so a missing label is only weak evidence. Your own marks always win:
+          mark any channel as AI or human from the toolbar popup.
+        </p>
+      </section>
+
+      <section>
+        <h2>Want verdicts sooner?</h2>
+        <p>
+          Turn on <b>Active mode</b> in the toolbar popup. Botless then checks the videos on your screen with YouTube
+          before you watch them, without your account (no cookies) and a few seconds apart. It’s off by default:
+          with it off, Botless sends nothing anywhere.
+        </p>
+        <p class="muted">
+          Tip: pin Botless to the toolbar. Click the puzzle-piece icon next to the address bar, then the pin next
+          to Botless.
+        </p>
+      </section>
+
+      <section>
+        <h2>Make it yours</h2>
+        <p>Badge, fade or hide each verdict’s videos, or skip “Probably AI” videos automatically.</p>
+        <p><a class="btn" href="options.html">Open Settings</a></p>
+      </section>
+
+      <section>
+        <h2>Ideas, bugs, questions</h2>
+        <p>
+          Botless is an independent, open-source project, and I actively answer feature requests and bug reports.
+          Ideas that fit the project get built: private, local, and never acting on your YouTube account.
+        </p>
+        <p class="row">
+          <a class="btn" href="https://github.com/j3ffx/botless/issues" target="_blank" rel="noopener">Suggest an idea or report a bug</a>
+          <a class="btn" href="https://chromewebstore.google.com/detail/botless-for-youtube/dcjchknlcighdakohbpgnmmhfpibnjne/reviews" target="_blank" rel="noopener">Rate Botless</a>
+        </p>
+      </section>
+    </main>
+  </body>
+</html>
