@@ -26,11 +26,12 @@ rejected on purpose.
 
 - **Phase 2 is unspecified.** Hooks exist for community votes (README → Phase 2 hooks). Agree on a spec
   before building it.
-- **Publishing.** v0.1.6 was tested and submitted to the Chrome Web Store, and is in review (as of 2026-10-02).
-  The listing uses the privacy policy ([`PRIVACY.md`](../PRIVACY.md)), the dashboard answers
-  ([`docs/STORE.md`](STORE.md)), and the images and promo video from `store/` (the video is on the Botless
-  YouTube channel). Next: answer any reviewer feedback, then link the published listing from the README and
-  the project site.
+- **Publishing.** Published on the Chrome Web Store on 2026-10-01 as v0.1.5
+  ([listing](https://chromewebstore.google.com/detail/botless-for-youtube/dcjchknlcighdakohbpgnmmhfpibnjne)),
+  linked from the README and the project site. The listing uses the privacy policy
+  ([`PRIVACY.md`](../PRIVACY.md)), the dashboard answers ([`docs/STORE.md`](STORE.md)), and the images and
+  promo video from `store/` (the video is on the Botless YouTube channel). v0.1.6 is tagged and tested, and
+  is the next store update.
 - **Icon.** The generated split-circle icon (`scripts/make-icons.mjs`) predates the rename to Botless and
   could be redesigned.
 - **Unverified:** the localized label *text* fallback (the article-ID match covers it in practice), and

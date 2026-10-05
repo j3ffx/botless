@@ -16,7 +16,10 @@ Website: [j3ffx.github.io/botless](https://j3ffx.github.io/botless/) (source in 
 
 ## Install
 
-Botless isn't on the Chrome Web Store yet. Until then:
+Install it from the [Chrome Web Store](https://chromewebstore.google.com/detail/botless-for-youtube/dcjchknlcighdakohbpgnmmhfpibnjne). Chromium browsers that accept
+Chrome Web Store extensions (Edge, Brave, Opera) can use the same listing.
+
+To try a build that isn't in the store yet (store updates wait for Google's review):
 
 1. Download `botless-X.Y.Z.zip` from the [latest release](https://github.com/j3ffx/botless/releases/latest)
    and unzip it.
