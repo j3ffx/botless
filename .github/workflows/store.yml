@@ -1,0 +1,45 @@
+# Uploads a GitHub release's zip to the Chrome Web Store and submits it for review, or shows the store status.
+# Manual only: run it after `npm run live-test -- --release X.Y.Z` passed (CLAUDE.md → CI and releases).
+# Keyless: GitHub's OIDC token is exchanged for a short-lived Google token (one-time setup in docs/STORE.md).
+name: Chrome Web Store
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'status, or publish (upload + submit for review)'
+        type: choice
+        options: [status, publish]
+        default: status
+      version:
+        description: 'Release to publish, e.g. 0.1.6 (publish only)'
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  store:
+    name: ${{ inputs.action == 'publish' && format('Publish {0}', inputs.version) || 'Status' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Google only trusts this workflow on main (the provider's attribute condition).
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write # GitHub OIDC token, exchanged for the Google one
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+      # Values reach the shell through env, never by pasting ${{ }} into the script (script injection).
+      - run: node scripts/store.mjs "$ACTION" "$VERSION"
+        env:
+          ACTION: ${{ inputs.action }}
+          VERSION: ${{ inputs.action == 'publish' && inputs.version || '' }}
+          CWS_PUBLISHER_ID: ${{ vars.CWS_PUBLISHER_ID }}
+          GCP_WORKLOAD_PROVIDER: ${{ vars.GCP_WORKLOAD_PROVIDER }}
+          GCP_SERVICE_ACCOUNT: ${{ vars.GCP_SERVICE_ACCOUNT }}

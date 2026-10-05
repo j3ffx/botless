@@ -78,3 +78,42 @@ account (the ownership file is `site/google*.html`).
 
 If a change stores something new, sends a new request, or needs a new permission, update `PRIVACY.md`, this
 file and the README's Privacy section in the same pull request. The store answers must then be updated too.
+
+## Automated uploads
+
+Once a release is tested on live YouTube, **Actions → Chrome Web Store → Run workflow** (`publish`, version
+`X.Y.Z`) uploads that GitHub release's zip and submits it for review. `status` shows what's published and
+what's in review. `.github/workflows/store.yml` runs `scripts/store.mjs`. No key is stored anywhere: GitHub's
+OIDC token is exchanged for a 15-minute Google token of a service account, and Google only accepts tokens
+from `store.yml` on `main` of `j3ffx/botless`. The workflow refuses to replace a submission that's still in
+review.
+
+One-time setup, signed in with the publisher account (it needs 2-step verification):
+
+1. Open [Cloud Shell](https://shell.cloud.google.com/) and paste:
+
+   ```bash
+   PROJECT=botless-store-$(openssl rand -hex 3)
+   gcloud projects create "$PROJECT" --name="Botless store"
+   gcloud config set project "$PROJECT"
+   gcloud services enable chromewebstore.googleapis.com iamcredentials.googleapis.com sts.googleapis.com iam.googleapis.com
+   gcloud iam service-accounts create store-upload --display-name="Botless store upload"
+   gcloud iam workload-identity-pools create github --location=global --display-name=GitHub
+   gcloud iam workload-identity-pools providers create-oidc botless --location=global --workload-identity-pool=github \
+     --issuer-uri=https://token.actions.githubusercontent.com \
+     --attribute-mapping=google.subject=assertion.sub,attribute.repository=assertion.repository \
+     --attribute-condition="assertion.repository=='j3ffx/botless' && assertion.workflow_ref=='j3ffx/botless/.github/workflows/store.yml@refs/heads/main'"
+   NUMBER=$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')
+   SA="store-upload@$PROJECT.iam.gserviceaccount.com"
+   gcloud iam service-accounts add-iam-policy-binding "$SA" --role=roles/iam.workloadIdentityUser \
+     --member="principalSet://iam.googleapis.com/projects/$NUMBER/locations/global/workloadIdentityPools/github/attribute.repository/j3ffx/botless"
+   echo "GCP_WORKLOAD_PROVIDER=projects/$NUMBER/locations/global/workloadIdentityPools/github/providers/botless"
+   echo "GCP_SERVICE_ACCOUNT=$SA"
+   ```
+
+2. In the [Developer Dashboard](https://chrome.google.com/webstore/devconsole), **Account**: add the
+   service-account email (`GCP_SERVICE_ACCOUNT`). Only one service account can be linked. Copy the
+   **Publisher ID** from the publisher settings.
+3. In the GitHub repository, **Settings → Secrets and variables → Actions → Variables**: add
+   `CWS_PUBLISHER_ID`, `GCP_WORKLOAD_PROVIDER` and `GCP_SERVICE_ACCOUNT`. None of them is a secret.
+4. Run the workflow with `status` to check.
