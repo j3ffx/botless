@@ -21,10 +21,10 @@ node store/capture.mjs close
 **Pick candidates by hand.** Reject any view that shows:
 
 - a real person's likeness (celebrities, politicians) or a franchise character;
-- an ad or "Sponsored" item (the screenshots crop the bottom 136 px, the video the top and bottom ~40 px);
-- a location hint ("Popular in …", a country code next to the logo);
-- a creator being labeled "Probably AI" without YouTube's own label: Botless only flags labeled videos, so
-  this can't happen unless thresholds were changed. Captures use the default thresholds.
+- an ad or "Sponsored" item (the store screenshots crop the bottom 136 px, the video the bottom 72 px);
+- a location hint ("Popular in …", a country code next to the logo).
+
+Captures use the default thresholds, so every *Probably AI* shown comes from YouTube's own label.
 
 The popup and Settings images use the previews' fake data (`scripts/previews.mjs`, a made-up channel).
 
@@ -50,6 +50,6 @@ Web Audio soundtrack scheduled on the same clock, recorded together by Chrome's 
 the duration, clipping and silent stretches. The file has no seek index: it plays fine (and YouTube accepts
 it), but jumping around in a local player may not work.
 
-The video goes on the Botless YouTube channel (the project's own account, never a personal one), Unlisted,
-with `youtube-thumbnail.png`. Check its owner before using the link:
+The video goes on the project's own YouTube channel (@j3ffx-dev, never a personal one), Unlisted, with
+`youtube-thumbnail.png`. Check its owner before using the link:
 `https://www.youtube.com/oembed?url=<video URL>&format=json` → `author_url`.

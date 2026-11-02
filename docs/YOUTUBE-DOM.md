@@ -174,8 +174,7 @@ call.
 
 **Not used**, because:
 
-1. Phase 1 must send no data anywhere. Every API call would reveal the video IDs the user sees to Google
-   Cloud under our key.
+1. Every API call would reveal the video IDs the user sees to Google Cloud under our key.
 2. It would need an extra host permission (`https://www.googleapis.com/*`) and an API key shipped in
    the extension, with quota limits of 1 unit per call and 10k/day by default.
 3. The watch page already contains the same disclosure for free.
@@ -195,8 +194,8 @@ Verified 2026-09-28 from a youtube.com page, with `credentials: "omit"` (no cook
 Observations:
 
 - The channel feed is unreliable. On 2026-10-01 it answered 404 for every channel tried (including ones that
-  had answered 200 an hour earlier) and once 500. A failed feed therefore only skips that channel's
-  confirmation; only 429 and 403 pause the checks.
+  had answered 200 an hour earlier) and once 500; it was back by 2026-11-02. A failed feed therefore only skips
+  that channel's confirmation; only 429 and 403 pause the checks.
 - Unlabeled videos still include `structuredDescriptionContentRenderer`. Its absence therefore means "format
   changed", not "no label", and in that case nothing is recorded.
 - The client version must look current. The bridge copies the page's `ytcfg INNERTUBE_CLIENT_VERSION` into

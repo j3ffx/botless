@@ -3,8 +3,9 @@
 The extension can only be fully tested in a **real Chrome** with the unpacked build loaded. Automated tests
 (`npm test`) cover the pure logic. Selectors and flows need YouTube itself.
 
-Last full pass: 2026-09-29 (Chrome, signed in to YouTube): all steps passed. Rerun the relevant
-steps after any change to the bridge, the content script or the selectors.
+Rerun the relevant steps after any change to the bridge, the content script or the selectors. Last full manual
+pass: 2026-09-29 (Chrome, signed in to YouTube); the welcome page (step 1) came later and is covered by the live
+test below.
 
 ## Setup
 
@@ -67,16 +68,16 @@ Search `We R Cinephiles` for a "Latest Shorts from X" shelf. Their Shorts tab is
 ### Active mode (background checks)
 
 - The popup has exactly **two switches**: Botless, and Active mode.
-- With Active mode on, search `ai generated music` and wait. The popup's "N of 150 checks today" rises by
+- With Active mode on, search `ai generated short film` and wait. The popup's "N of 150 checks today" rises by
   about 1 every 3 s, and badges appear without opening videos. Channel-less Shorts get badged too.
 - `youtube.com/feed/history` shows none of the checked videos (requests are sent without cookies).
 - Turning Active mode off stops the counter.
 
 ## Automated part, on live YouTube
 
-`npm run live-test -- --release X.Y.Z` (or a folder, default `dist/`) runs steps 1 (after 0.1.6), 3, 4, part of 5, Active
-mode and "Botless off" in Chrome for Testing, signed out, in about 3 minutes. It doesn't replace this plan:
-nothing signed in, no auto-skip, Shorts player, themes or scrolling feel.
+`npm run live-test -- --release X.Y.Z` (or a folder, default `dist/`) runs steps 1, 3, 4, the badges of step 5,
+Active mode and "Botless off" in Chrome for Testing, signed out, in about 3 minutes. It doesn't replace this
+plan: nothing signed in, no auto-skip, Shorts player, themes or scrolling feel.
 
 ## Quicker checks without installing
 
