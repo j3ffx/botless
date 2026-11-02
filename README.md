@@ -6,18 +6,17 @@
 A Manifest V3 Chrome extension that judges each **channel** as **Probably Human**, **Probably AI** or
 **Inconclusive**, then badges, fades, hides or auto-skips that channel's videos.
 
-Phase 1 runs **on your device**. It has no analytics and no servers. The popup has two switches:
-**Botless on/off**, and **[Active mode](#active-mode-opt-in)**. The second one is off by
-default. While it's off, Botless is fully local and makes no requests of its own; it learns only from
-what you watch.
+Botless runs **on your device**. It has no analytics and no servers. The popup has two switches:
+**Botless on/off**, and **[Active mode](#active-mode-opt-in)**. The second one is off by default. While
+it's off, Botless is fully local and makes no requests of its own; it learns only from what you watch.
 
-Website: [j3ffx.github.io/botless](https://j3ffx.github.io/botless/) (source in `site/`, published by
-`.github/workflows/pages.yml`).
+Website: [j3ffx.github.io/botless](https://j3ffx.github.io/botless/)
 
 ## Install
 
-Install it from the [Chrome Web Store](https://chromewebstore.google.com/detail/botless-for-youtube/dcjchknlcighdakohbpgnmmhfpibnjne). Chromium browsers that accept
-Chrome Web Store extensions (Edge, Brave, Opera) can use the same listing.
+Install it from the
+[Chrome Web Store](https://chromewebstore.google.com/detail/botless-for-youtube/dcjchknlcighdakohbpgnmmhfpibnjne).
+Chromium browsers that accept Chrome Web Store extensions (Edge, Brave, Opera) can use the same listing.
 
 To try a build that isn't in the store yet (store updates wait for Google's review):
 
@@ -43,12 +42,12 @@ unit tested. Each signal adds to a score between −1 and +1:
 | 2 | **Official label ratio**: share of the channel's videos *you've watched* that carry YouTube's own "Made with AI" disclosure | **+1.0** if ratio ≥ 90% (configurable) and at least 2 videos seen | Strongest automatic signal. Enough for "Probably AI" by itself. |
 | 2b | Some labeled videos, but below the ratio or sample size | +0.3 + 0.3 × ratio (max 0.6) | Never enough for "Probably AI" alone. A creator who used AI once is not an AI channel. |
 | 3 | No labels across 5+ watched videos | −0.5 | Weak evidence, because many creators never disclose. |
-| 4 | **Community votes** (phase 2) | ±0.8 × (ai − human) / total | Ignored until there are 5+ votes. |
+| 4 | **Community votes** | ±0.8 × (ai − human) / total | Not built yet ([roadmap](docs/ROADMAP.md)): the model is ready, but there are no votes to count. |
 
 Mapping: score ≥ 0.7 → **Probably AI**; score ≤ −0.3 → **Probably Human**; any other score where a signal
 fired → **Inconclusive**; no signal → no badge. The UI never claims certainty.
 
-Every threshold can be changed on the options page. The internal weights are in `WEIGHTS` at the top of
+Every threshold can be changed in Settings. The internal weights are in `WEIGHTS` at the top of
 `scoring.ts`, and `tests/scoring.test.ts` pins down the intended behaviour of each rule.
 
 ### What counts as "YouTube's AI label"
@@ -123,10 +122,11 @@ Code: [`src/content/checker.ts`](src/content/checker.ts) (scheduling),
 - **Popup:** exactly two switches (Botless on/off, Active mode, with today's check usage), today's
   count of flagged videos, the current channel's verdict and the reasons behind it, and Mark as AI / Mark
   as human.
-- **Options:** general (auto-skip), Active mode (background checks and their daily limit; greyed out
-  while the gate is off), actions, thresholds, cache lifetimes, the list of channels
-  you marked (with Remove), and JSON export/import. Imports are validated field by field.
-- Works with YouTube's light and dark themes (`html[dark]`). The popup and options pages follow
+- **Settings:** general (auto-skip), Active mode (background checks and their daily limit; greyed out
+  while Active mode is off), actions, thresholds, cache lifetimes, the list of channels you marked (with
+  Remove), and JSON export/import. Imports are validated field by field.
+- **Welcome page:** opens once, on first install, and explains why verdicts take a few watched videos.
+- Works with YouTube's light and dark themes (`html[dark]`). The popup and Settings follow
   `prefers-color-scheme`.
 
 ## Permissions
@@ -146,10 +146,9 @@ Channel IDs (`UC…`) exist only in YouTube's own JavaScript objects. The visibl
 which owners can change. A normal content script can't read page JavaScript. So
 [`src/bridge/bridge.ts`](src/bridge/bridge.ts) runs inside the page and does only two things: it copies IDs
 into `data-botless-*` attributes, and it reports the current page's video, channel and disclosure through a
-DOM event. It can't access
-`chrome.*`, doesn't touch storage, and makes no requests. Because it runs in the page, YouTube's own
-scripts could in principle see those attributes and events. They only contain facts YouTube already has
-(which video is on screen).
+DOM event. It can't access `chrome.*`, doesn't touch storage, and makes no requests. Because it runs in the
+page, YouTube's own scripts could in principle see those attributes and events. They only contain facts
+YouTube already has (which video is on screen).
 
 The badges themselves are part of the page too, as anything shown on it must be. So YouTube's scripts, or
 another extension, could see which tiles Botless badged, faded or hid, and read a badge's tooltip (for example
@@ -175,23 +174,15 @@ The privacy policy, in plain language, is [`PRIVACY.md`](PRIVACY.md). The techni
   | Key | Contents | Lifetime |
   |---|---|---|
   | `settings` | your preferences | until changed |
-  | `overrides` | channels you marked AI/Human | forever (remove in Options) |
+  | `overrides` | channels you marked AI/Human | forever (remove in Settings) |
   | `c:<channelId>` | video IDs you watched from that channel + label yes/no (last 200), cached verdict | verdict recomputed locally after 7 days (no request); channel forgotten after 180 days unseen, or earlier if storage passes 70% of Chrome's quota (least recently seen first) |
   | `vmap` | video → channel pairs, used to badge channel-less Shorts tiles | newest 3000 |
   | `stats` | today's flagged video IDs, for the counter | reset daily |
   | `checks` | number of background checks today, plus any pause | reset daily |
   | `maint` | when channels were last purged | overwritten daily |
 
-- **Clear observations** in Options forgets every observed channel, the video map and today's flagged count.
+- **Clear observations** in Settings forgets every observed channel, the video map and today's flagged count.
   It keeps your settings, your marks, and today's background-check count (which enforces the daily limit).
-
-## YouTube Data API
-
-The API has `videos.status.containsSyntheticMedia`. It is documented as the owner-side disclosure field,
-and we did not verify that it can be read on other people's videos. **It is not used**: it would need
-network calls, an API key and an extra permission, which conflicts with phase 1's no-data rule, and the
-watch page already has the same information. Details are in
-[`docs/YOUTUBE-DOM.md`](docs/YOUTUBE-DOM.md#4-youtube-data-api-v3).
 
 ## Architecture
 
@@ -214,14 +205,17 @@ src/
   shared/check.ts         background-check parsing + "what does this channel need next" (pure)
   shared/validate.ts      validation of page data and service worker messages (pure)
   shared/retention.ts     which channels to drop when storage fills up (pure)
+site/                     the project website, published to GitHub Pages
+store/                    tools that generate the store images and the promo video
+scripts/                  build, packaging, checks, smoke and live tests, release and store automation
 ```
 
 **Performance.** The MutationObserver callback only sets a flag. Work runs at most every ~150 ms via
 `requestIdleCallback`. Each pass compares one `href` per tile and skips tiles that haven't changed, and
 layout reads are done before the DOM writes, which are batched in `requestAnimationFrame`. A change to one
 channel only re-renders that channel's tiles. Badges and checks don't run in hidden tabs (the bridge still
-stamps tiles there). Storage writes go through the service worker in batches of up to 2 seconds. The bundles
-are about 52 KB in total, minified.
+stamps tiles there). Storage writes go through the service worker in batches of up to 2 seconds. CI fails if
+the minified bundles pass 64 KB (`scripts/check-dist.mjs`).
 
 ## Development
 
@@ -233,46 +227,35 @@ npm test            # vitest: scoring, disclosure, extraction, cache/TTL, checks
 npm run typecheck
 npm run verify      # typecheck + tests + build + dist/ check: run before every commit
 npm run smoke       # loads dist/ in Chrome for Testing, offline (needs CHROME_PATH)
+npm run live-test   # same, on real YouTube, signed out (manual only, never in CI)
 npm run package     # dist/ -> botless-<version>.zip (store upload)
 npm run icons       # regenerate PNG icons
 ```
 
-CI runs all of this on every push and pull request. Releases are cut with `npm version` and published
-from the tag by GitHub Actions. Details are in `CLAUDE.md` → CI and releases.
+CI runs the build, the tests and the smoke test on every push and pull request. Releases are cut with
+`npm version` and published from the tag by GitHub Actions. Details are in `CLAUDE.md` → CI and releases, and
+the manual test plan is in [`docs/TESTING.md`](docs/TESTING.md).
 
 Dev-only helpers (not shipped):
 
 - `node scripts/harness.mjs` bundles the built scripts with an in-memory `chrome.*` shim into
   `dist-test/harness.js`. Paste it into a YouTube tab's DevTools console to try the extension without
-  installing it. This is how the live smoke tests below were run.
+  installing it.
 - `node scripts/previews.mjs` generates popup, options and injected-UI previews with fake data in
   `dist-test/`. Serve them with `node scripts/serve-harness.mjs` and open
   `http://localhost:8123/dist-test/popup.html`.
 
-### Verified on live YouTube (2026-09-28)
-
-- Search tiles (`ytd-video-renderer`) stamped with the correct UC IDs, and badges rendered.
-- Shorts shelf tiles stamped with a video ID and no channel, as expected.
-- Watch page for a real "Made with AI" video: disclosure read from data, channel observed, the
-  *Inconclusive* pill at 1 video, and *Probably AI* after lowering the minimum to 1.
-- Auto-skip toast, video paused during the countdown, skip after the delay, Undo keeps the video and
-  isn't re-triggered, and the daily counter increments.
-- Shorts player: channel ID and disclosure detected from the `yt-navigate-finish` data.
-- Everything above, plus the Shorts overlay pill, auto-skip to the next video in a playlist (signed
-  in), "Latest Shorts from X" badging, background checks, the popup and Settings, both themes and
-  scrolling performance, was then confirmed manually in real Chrome, signed in. The full manual test plan
-  is in [`docs/TESTING.md`](docs/TESTING.md).
-
 ## Known limitations
 
 - Desktop `www.youtube.com` only (not `m.youtube.com`, not YouTube Music).
+- Botless only knows what YouTube discloses: an AI video its creator didn't label goes undetected, unless you
+  mark the channel yourself.
 - Verdicts reflect what you have watched. That is local and private, but it starts empty.
 - Shorts tiles carry no channel data. They are badged on the channel's own page, in search "Latest
   Shorts from X" shelves, when the video was already seen elsewhere, or once a background check
   (Active mode) has looked the Short up. Without Active mode, mixed Shorts shelves stay unbadged.
-- Detection works whatever YouTube's UI language (verified manually with a non-English one). That's
-  thanks to the language-independent help-article-ID match; the localized header *text* fallback itself
-  remains unverified.
+- While YouTube's channel feeds are down, a first label can't be confirmed, so that channel stays
+  *Inconclusive* until it can.
 - YouTube markup changes. All selectors are listed in `docs/YOUTUBE-DOM.md` and kept in a few constants
   (`TILE_SELECTOR`, `THUMB`, `ITEM_ROOT`, `OWNER_TARGET`).
 
@@ -281,22 +264,6 @@ Dev-only helpers (not shipped):
 Feature requests and bug reports are welcome in [Issues](https://github.com/j3ffx/botless/issues), and I
 actively answer them. Ideas that fit the project get built: private, local-first, and never acting on your
 YouTube account. [`docs/ROADMAP.md`](docs/ROADMAP.md) lists what was already decided, and why.
-
-## Phase 2 hooks
-
-Phase 2 isn't specified yet. It's expected to add community votes, and it will be designed and documented
-before anything is built. See [`docs/ROADMAP.md`](docs/ROADMAP.md). What's already in place:
-
-- `computeVerdict` already accepts `votes` and applies `minVotes` / `voteWeight` (settings, with defaults).
-  Both are covered by tests.
-- `ChannelRecord.votes` exists in the storage schema.
-- The service worker has a `vote` message that currently returns "phase 2". A vote client would plug
-  in there.
-- The popup and Settings will need their vote controls back: the buttons and the `minVotes` / `voteWeight`
-  fields were removed from the UI until phase 2 exists.
-
-A backend would also need the `host_permissions` entry for its origin, a privacy notice update, and
-opt-in consent.
 
 ## License
 
