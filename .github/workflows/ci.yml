@@ -7,6 +7,7 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
   workflow_dispatch:
   workflow_call: # reused by release.yml, so a release is built and tested exactly like CI
 
@@ -20,6 +21,12 @@ permissions:
 jobs:
   verify:
     name: Typecheck, test, build
+    # Nestor's workshop branches hold code nobody has read yet: they run once the owner, having
+    # read the pull request, adds the ci-ok label.
+    if: >-
+      github.event_name != 'pull_request'
+      || !startsWith(github.head_ref, 'nestor/')
+      || contains(github.event.pull_request.labels.*.name, 'ci-ok')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -78,6 +85,12 @@ jobs:
 
   commits:
     name: Conventional Commits
+    # Nestor's workshop branches hold code nobody has read yet: they run once the owner, having
+    # read the pull request, adds the ci-ok label.
+    if: >-
+      github.event_name != 'pull_request'
+      || !startsWith(github.head_ref, 'nestor/')
+      || contains(github.event.pull_request.labels.*.name, 'ci-ok')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
