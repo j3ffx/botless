@@ -37,7 +37,7 @@
     "@types/node": "^22.20.5",
     "esbuild": "^0.28.2",
     "happy-dom": "^21.0.4",
-    "oxc-parser": "^0.158.0",
+    "oxc-parser": "^0.159.0",
     "puppeteer-core": "^25.17.0",
     "typescript": "^7.0.2",
     "vitest": "^5.1.0"
